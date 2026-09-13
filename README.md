@@ -2,7 +2,29 @@
 
 A prototype project exploring a simpler, more reliable, and more intelligent way to listen to text and documents.
 
-> **Current status:** Early validation and prototype planning. The goal is to learn what users actually need before building a large product.
+> **Current status:** Prototype 1 implementation has begun. The first interactive listening slice is available as a dependency-free web prototype.
+
+## Run Prototype 1
+
+Requires Node.js 20 or newer and Python 3.11 or newer. Install the local document-extraction dependencies once:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+```bash
+npm start
+```
+
+Open `http://localhost:4173`. The prototype uses the browser's built-in speech synthesis and keeps the initial voice selection intentionally simple.
+
+Run the model tests with `npm test`.
+
+The prototype includes the document reader, pasted-text plus TXT/Markdown/PDF/DOCX ingestion, heading-based section navigation, sentence and word follow-along, text-aware previous/next controls, speed selection, the proportional section-dot timeline, and local resume state. Returning listeners recover their document and exact position in a paused state, with explicit Resume and Start over actions. Scanned-PDF OCR and server-backed speech are intentionally deferred to later slices.
+
+Finishing a document reveals one optional **Review what I heard** action. The current local prototype assembles a transparent section-based summary and key takeaways without sending document content to an external service, and the listener can download that review as a text file. AI-authored reviews can replace this local strategy later without changing the completion flow.
+
+Playback speed is adjustable from 1× through 3× in fine 0.05× increments. Opening the compact, scrollable speed menu pauses playback, and selecting a rate leaves playback paused.
 
 ## Product Hypothesis
 
