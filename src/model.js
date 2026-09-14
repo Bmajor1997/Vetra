@@ -9,6 +9,30 @@ export function worksheet_control_type(text) {
   if (/^_{5,}$/.test(text)) return "answer";
   return null;
 }
+export function worksheet_control_id(sentence_index, word_index) { return `s${sentence_index}-w${word_index}`; }
+
+export function build_worksheet_export(document, responses = {}) {
+  const sections = document.sections.map((section) => {
+    const sentences = section.sentences.map((sentence) => {
+      const output = [];
+      for (let word_index = 0; word_index < sentence.words.length; word_index++) {
+        const word = sentence.words[word_index];
+        const type = worksheet_control_type(word.text);
+        const control_id = worksheet_control_id(sentence.index, word_index);
+        if (type === "checkbox") {
+          const checked = responses[control_id] ?? /[☑☒]/.test(word.text);
+          output.push(checked ? "[x]" : "[ ]");
+        } else if (type === "answer") {
+          output.push(String(responses[control_id] || "[No response]").trim() || "[No response]");
+          while (worksheet_control_type(sentence.words[word_index + 1]?.text) === "answer") word_index++;
+        } else output.push(word.text);
+      }
+      return output.join(" ");
+    });
+    return `${section.heading}\n\n${sentences.join("\n\n")}`;
+  });
+  return sections.join("\n\n---\n\n");
+}
 export function speech_segment(sentence, wordIndex = 0) {
   const safeIndex = Math.min(Math.max(0, Math.floor(Number(wordIndex) || 0)), Math.max(0, sentence.words.length - 1));
   const start = sentence.words[safeIndex]?.start ?? 0;
