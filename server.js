@@ -17,7 +17,7 @@ createServer(async (request, response) => {
       const temp = await mkdtemp(join(tmpdir(), "recall-document-"));
       try {
         const input = join(temp, `input${extname(name).toLowerCase()}`); await writeFile(input, Buffer.from(data, "base64"));
-        const result = await runExtractor(input);
+        const result = await run_extractor(input);
         response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ text: result }));
       } finally { await rm(temp, { recursive: true, force: true }); }
     } catch (error) { response.writeHead(400, { "Content-Type": "application/json" }).end(JSON.stringify({ error: error.message })); }
@@ -30,7 +30,7 @@ createServer(async (request, response) => {
   catch { response.writeHead(404).end("Not found"); }
 }).listen(port, () => console.log(`Recall is ready at http://localhost:${port}`));
 
-function runExtractor(input) {
+function run_extractor(input) {
   const python = process.env.PYTHON_EXECUTABLE || "python";
   return new Promise((resolve, reject) => {
     const child = spawn(python, [join(root, "extract_document.py"), input], { windowsHide: true }); let output = "", errors = "";
