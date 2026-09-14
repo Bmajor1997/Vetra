@@ -4,6 +4,11 @@ export function normalize_playback_rate(rate) { const clamped = Math.min(3, Math
 export function format_playback_rate(rate) { return `${normalize_playback_rate(rate)}×`; }
 export function split_sentences(text) { return text.match(/[^.!?]+[.!?]+[\]"')]*|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? []; }
 export function words_with_offsets(text) { return [...text.matchAll(/\S+/g)].map((match) => ({ text: match[0], start: match.index })); }
+export function worksheet_control_type(text) {
+  if (/^[☐□☑☒]$/.test(text)) return "checkbox";
+  if (/^_{5,}$/.test(text)) return "answer";
+  return null;
+}
 export function speech_segment(sentence, wordIndex = 0) {
   const safeIndex = Math.min(Math.max(0, Math.floor(Number(wordIndex) || 0)), Math.max(0, sentence.words.length - 1));
   const start = sentence.words[safeIndex]?.start ?? 0;
@@ -52,6 +57,11 @@ export function normalize_resume_snapshot(snapshot) {
   if (!snapshot || snapshot.version !== 1 || typeof snapshot.title !== "string" || !Array.isArray(snapshot.sections) || !snapshot.sections.length) return null;
   const sections = snapshot.sections.filter((section) => typeof section?.heading === "string" && typeof section?.text === "string" && section.text.trim());
   if (!sections.length) return null;
+  const worksheetResponses = Object.fromEntries(Object.entries(snapshot.worksheetResponses || {}).flatMap(([key, value]) => {
+    if (typeof value === "boolean") return [[key, value]];
+    if (typeof value === "string") return [[key, value.slice(0, 5000)]];
+    return [];
+  }));
   return {
     version: 1,
     title: snapshot.title || "Untitled document",
@@ -60,6 +70,7 @@ export function normalize_resume_snapshot(snapshot) {
     wordIndex: Math.max(0, Math.floor(Number(snapshot.wordIndex) || 0)),
     rate: normalize_playback_rate(snapshot.rate),
     completed: Boolean(snapshot.completed),
+    worksheetResponses,
     savedAt: Number(snapshot.savedAt) || Date.now(),
   };
 }
