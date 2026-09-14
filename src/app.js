@@ -4,9 +4,10 @@ let doc = build_document(sections);
 let documentTitle = "The quiet advantage of deliberate attention";
 const RESUME_KEY = "voxify.resume.v1";
 let persistenceReady = false;
+let pending_document_text = "";
 const state = { sentenceIndex: 0, wordIndex: 0, rate: 1, playing: false, completed: false, utterance: null };
 const $ = (selector) => document.querySelector(selector);
-const el = { document: $("#document"), title: $("#documentTitle"), estimate: $("#documentEstimate"), playbackStatus: $("#playbackStatus"), shortcutTrigger: $("#shortcutTrigger"), shortcutDialog: $("#shortcutDialog"), closeShortcuts: $("#closeShortcuts"), resumeCard: $("#resumeCard"), resumeMessage: $("#resumeMessage"), resumePlayback: $("#resumePlayback"), startOver: $("#startOver"), completion: $("#completion"), openReview: $("#openReview"), reviewDialog: $("#reviewDialog"), closeReview: $("#closeReview"), reviewSummary: $("#reviewSummary"), reviewTakeaways: $("#reviewTakeaways"), downloadReview: $("#downloadReview"), sectionList: $("#sectionList"), panel: $("#sectionsPanel"), scrim: $("#panelScrim"), trigger: $("#sectionsTrigger"), close: $("#closeSections"), documentTrigger: $("#documentTrigger"), dialog: $("#documentDialog"), documentText: $("#documentText"), documentFile: $("#documentFile"), selectedFile: $("#selectedFile"), documentError: $("#documentError"), loadDocument: $("#loadDocument"), sectionName: $("#currentSectionName"), sectionPosition: $("#sectionPosition"), speedButton: $("#speedButton"), speedMenu: $("#speedMenu"), currentTime: $("#currentTime"), totalTime: $("#totalTime"), timeline: $("#timeline"), timelineComplete: $("#timelineComplete"), sectionDots: $("#sectionDots"), playPause: $("#playPause"), playIcon: $("#playIcon"), previous: $("#previousSentence"), next: $("#nextSentence") };
+const el = { document: $("#document"), title: $("#documentTitle"), estimate: $("#documentEstimate"), playbackStatus: $("#playbackStatus"), shortcutTrigger: $("#shortcutTrigger"), shortcutDialog: $("#shortcutDialog"), closeShortcuts: $("#closeShortcuts"), resumeCard: $("#resumeCard"), resumeMessage: $("#resumeMessage"), resumePlayback: $("#resumePlayback"), startOver: $("#startOver"), completion: $("#completion"), openReview: $("#openReview"), reviewDialog: $("#reviewDialog"), closeReview: $("#closeReview"), reviewSummary: $("#reviewSummary"), reviewTakeaways: $("#reviewTakeaways"), downloadReview: $("#downloadReview"), sectionList: $("#sectionList"), panel: $("#sectionsPanel"), scrim: $("#panelScrim"), trigger: $("#sectionsTrigger"), close: $("#closeSections"), documentTrigger: $("#documentTrigger"), dialog: $("#documentDialog"), documentFile: $("#documentFile"), selectedFile: $("#selectedFile"), documentError: $("#documentError"), loadDocument: $("#loadDocument"), sectionName: $("#currentSectionName"), sectionPosition: $("#sectionPosition"), speedButton: $("#speedButton"), speedMenu: $("#speedMenu"), currentTime: $("#currentTime"), totalTime: $("#totalTime"), timeline: $("#timeline"), timelineComplete: $("#timelineComplete"), sectionDots: $("#sectionDots"), playPause: $("#playPause"), playIcon: $("#playIcon"), previous: $("#previousSentence"), next: $("#nextSentence") };
 
 const escape_html = (value) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
 
@@ -62,22 +63,25 @@ function render_review() { const review = build_review(doc); el.reviewSummary.te
 PLAYBACK_RATES.forEach((speed) => { const button = document.createElement("button"); button.role = "option"; button.tabIndex = -1; button.textContent = format_playback_rate(speed); button.dataset.speed = speed; el.speedMenu.append(button); });
 restore_state(); render_document(); render_sections(); persistenceReady = true;
 el.trigger.addEventListener("click", () => toggle_panel(true)); el.close.addEventListener("click", () => toggle_panel(false)); el.scrim.addEventListener("click", () => toggle_panel(false));
-el.documentTrigger.addEventListener("click", () => { pause_for_choice(); el.documentError.textContent = ""; el.dialog.showModal(); el.documentText.focus(); });
+el.documentTrigger.addEventListener("click", () => { pause_for_choice(); pending_document_text = ""; el.documentFile.value = ""; el.selectedFile.textContent = "No document selected"; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.dialog.showModal(); el.documentFile.focus(); });
 el.documentFile.addEventListener("change", async () => {
   const file = el.documentFile.files[0]; if (!file) return;
-  el.selectedFile.textContent = file.name; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.loadDocument.textContent = "Reading document…";
+  pending_document_text = ""; el.selectedFile.textContent = `${file.name} · Reading…`; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.loadDocument.textContent = "Reading document…";
   try {
     if (/\.(pdf|docx)$/i.test(file.name)) {
       if (file.size > 25_000_000) throw new Error("Document is too large. The current limit is 25 MB.");
       const bytes = new Uint8Array(await file.arrayBuffer()); let binary = "";
       for (let offset = 0; offset < bytes.length; offset += 32_768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768));
       const response = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, data: btoa(binary) }) });
-      const result = await response.json(); if (!response.ok) throw new Error(result.error || "The document could not be read."); el.documentText.value = result.text;
-    } else { el.documentText.value = await file.text(); }
-  } catch (error) { el.documentText.value = ""; el.documentError.textContent = error.message; }
-  finally { el.loadDocument.disabled = false; el.loadDocument.textContent = "Open in reader"; }
+      const result = await response.json(); if (!response.ok) throw new Error(result.error || "The document could not be read."); pending_document_text = result.text;
+    } else { pending_document_text = await file.text(); }
+    if (!pending_document_text.trim()) throw new Error("This document does not contain readable text.");
+    el.selectedFile.textContent = `${file.name} · Ready`;
+    el.loadDocument.disabled = false;
+  } catch (error) { pending_document_text = ""; el.selectedFile.textContent = file.name; el.documentError.textContent = error.message; }
+  finally { el.loadDocument.textContent = "Open in reader"; }
 });
-el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(el.documentText.value, el.documentFile.files[0]?.name.replace(/\.(txt|md)$/i, "") || "Untitled document")));
+el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(pending_document_text, el.documentFile.files[0]?.name.replace(/\.(txt|md|pdf|docx)$/i, "") || "Untitled document")));
 el.sectionList.addEventListener("click", (event) => { const button = event.target.closest("[data-section-jump]"); if (!button) return; const section = doc.sections[Number(button.dataset.sectionJump)]; state.sentenceIndex = section.sentences[0].index; state.wordIndex = 0; cancel_speech(); toggle_panel(false); render_state({ scroll: true }); announce(`${section.heading}. Section ${section.sectionIndex + 1} of ${doc.sections.length}. Playback paused.`); });
 el.speedButton.addEventListener("click", () => { pause_for_choice(); const open = !el.speedMenu.classList.contains("is-open"); el.speedMenu.classList.toggle("is-open", open); el.speedButton.setAttribute("aria-expanded", String(open)); if (open) { const options = [...el.speedMenu.querySelectorAll("[data-speed]")]; options.forEach((option) => option.setAttribute("aria-selected", String(Number(option.dataset.speed) === state.rate))); (options.find((option) => Number(option.dataset.speed) === state.rate) || options[0]).focus(); announce("Speed menu opened. Playback paused."); } });
 el.speedMenu.addEventListener("click", (event) => { const button = event.target.closest("[data-speed]"); if (!button) return; state.rate = Number(button.dataset.speed); state.playing = false; el.speedButton.textContent = format_playback_rate(state.rate); el.speedMenu.classList.remove("is-open"); el.speedButton.setAttribute("aria-expanded", "false"); render_state(); el.speedButton.focus(); announce(`Speed set to ${format_playback_rate(state.rate)}. Playback remains paused.`); });

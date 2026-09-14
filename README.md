@@ -64,7 +64,7 @@ The exact prototype scope will be adjusted based on tester feedback, but the cur
 
 ### Core capabilities
 
-- Paste text into the application
+- Upload a document without entering text into a form
 - Upload a PDF
 - Upload a DOCX document
 - Extract readable text
