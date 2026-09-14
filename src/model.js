@@ -70,6 +70,7 @@ export function normalize_resume_snapshot(snapshot) {
     wordIndex: Math.max(0, Math.floor(Number(snapshot.wordIndex) || 0)),
     rate: normalize_playback_rate(snapshot.rate),
     completed: Boolean(snapshot.completed),
+    documentMode: snapshot.documentMode === "worksheet" ? "worksheet" : "reading",
     worksheetResponses,
     savedAt: Number(snapshot.savedAt) || Date.now(),
   };

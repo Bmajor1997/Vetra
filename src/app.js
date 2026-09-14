@@ -5,6 +5,7 @@ let documentTitle = "The quiet advantage of deliberate attention";
 const RESUME_KEY = "voxify.resume.v1";
 let persistenceReady = false;
 let pending_document_text = "";
+let active_document_mode = "reading";
 let worksheet_responses = {};
 const state = { sentenceIndex: 0, wordIndex: 0, rate: 1, playing: false, completed: false, utterance: null };
 const $ = (selector) => document.querySelector(selector);
@@ -15,7 +16,7 @@ const escape_html = (value) => value.replace(/[&<>'"]/g, (character) => ({ "&": 
 function render_document() {
   const render_word = (sentence, word, word_index) => {
     const control_id = `s${sentence.index}-w${word_index}`;
-    const control_type = worksheet_control_type(word.text);
+    const control_type = active_document_mode === "worksheet" ? worksheet_control_type(word.text) : null;
     if (control_type === "checkbox") {
       const checked = worksheet_responses[control_id] ?? /[☑☒]/.test(word.text);
       return `<button type="button" class="worksheet-checkbox" data-word="${word_index}" data-worksheet-control="${control_id}" aria-pressed="${checked}" aria-label="${checked ? "Uncheck" : "Check"} this worksheet item">${checked ? "☑" : "☐"}</button>`;
@@ -55,8 +56,8 @@ function render_state({ scroll = false } = {}) {
   document.querySelectorAll("[data-section-dot]").forEach((dot) => dot.classList.toggle("is-current", Number(dot.dataset.sectionDot) === section.sectionIndex));
   if (persistenceReady) persist_state();
 }
-function persist_state() { try { localStorage.setItem(RESUME_KEY, JSON.stringify({ version: 1, title: documentTitle, sections: doc.sections.map(({ heading, text }) => ({ heading, text })), sentenceIndex: state.sentenceIndex, wordIndex: state.wordIndex, rate: state.rate, completed: state.completed, worksheetResponses: worksheet_responses, savedAt: Date.now() })); } catch { /* Storage can be unavailable or full; playback still works. */ } }
-function restore_state() { try { const saved = normalize_resume_snapshot(JSON.parse(localStorage.getItem(RESUME_KEY))); if (!saved) return false; doc = build_document(saved.sections); documentTitle = saved.title; worksheet_responses = saved.worksheetResponses; state.sentenceIndex = Math.min(saved.sentenceIndex, doc.sentences.length - 1); state.wordIndex = Math.min(saved.wordIndex, Math.max(0, doc.sentences[state.sentenceIndex].words.length - 1)); state.rate = saved.rate; state.completed = saved.completed; el.speedButton.textContent = format_playback_rate(state.rate); const progress = progress_for_sentence(doc, state.sentenceIndex, state.wordIndex); if (!state.completed && progress > 0 && progress < 1) { el.resumeMessage.textContent = `Continue “${documentTitle}” — ${format_time(doc.durationSeconds * progress / state.rate)} of ${format_time(doc.durationSeconds / state.rate)}`; el.resumeCard.hidden = false; } return true; } catch { return false; } }
+function persist_state() { try { localStorage.setItem(RESUME_KEY, JSON.stringify({ version: 1, title: documentTitle, sections: doc.sections.map(({ heading, text }) => ({ heading, text })), sentenceIndex: state.sentenceIndex, wordIndex: state.wordIndex, rate: state.rate, completed: state.completed, documentMode: active_document_mode, worksheetResponses: worksheet_responses, savedAt: Date.now() })); } catch { /* Storage can be unavailable or full; playback still works. */ } }
+function restore_state() { try { const saved = normalize_resume_snapshot(JSON.parse(localStorage.getItem(RESUME_KEY))); if (!saved) return false; doc = build_document(saved.sections); documentTitle = saved.title; active_document_mode = saved.documentMode; worksheet_responses = saved.worksheetResponses; state.sentenceIndex = Math.min(saved.sentenceIndex, doc.sentences.length - 1); state.wordIndex = Math.min(saved.wordIndex, Math.max(0, doc.sentences[state.sentenceIndex].words.length - 1)); state.rate = saved.rate; state.completed = saved.completed; el.speedButton.textContent = format_playback_rate(state.rate); const progress = progress_for_sentence(doc, state.sentenceIndex, state.wordIndex); if (!state.completed && progress > 0 && progress < 1) { el.resumeMessage.textContent = `Continue “${documentTitle}” — ${format_time(doc.durationSeconds * progress / state.rate)} of ${format_time(doc.durationSeconds / state.rate)}`; el.resumeCard.hidden = false; } return true; } catch { return false; } }
 function cancel_speech() { speechSynthesis.cancel(); state.utterance = null; state.playing = false; render_state(); }
 function speak_current_sentence() {
   el.resumeCard.hidden = true;
@@ -73,13 +74,13 @@ function speak_current_sentence() {
 function pause_for_choice() { if (state.playing) cancel_speech(); }
 function toggle_panel(open) { if (open) pause_for_choice(); el.panel.classList.toggle("is-open", open); el.scrim.classList.toggle("is-open", open); el.panel.setAttribute("aria-hidden", String(!open)); el.trigger.setAttribute("aria-expanded", String(open)); if (open) { (el.sectionList.querySelector(".is-current") || el.close).focus(); announce("Sections opened. Playback paused."); } else el.trigger.focus(); }
 function jump_to_sentence(index) { cancel_speech(); state.completed = false; state.sentenceIndex = Math.max(0, Math.min(doc.sentences.length - 1, index)); state.wordIndex = 0; render_state({ scroll: true }); }
-function load_parsed_document(parsed) { if (!parsed.sections.length) { el.documentError.textContent = "This document does not contain readable text."; return; } cancel_speech(); doc = build_document(parsed.sections); documentTitle = parsed.title; worksheet_responses = {}; state.sentenceIndex = 0; state.wordIndex = 0; state.completed = false; el.resumeCard.hidden = true; render_document(); render_sections(); render_state(); el.dialog.close(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+function load_parsed_document(parsed, mode = "reading") { if (!parsed.sections.length) { el.documentError.textContent = "This document does not contain readable text."; return; } cancel_speech(); doc = build_document(parsed.sections); documentTitle = parsed.title; active_document_mode = mode === "worksheet" ? "worksheet" : "reading"; worksheet_responses = {}; state.sentenceIndex = 0; state.wordIndex = 0; state.completed = false; el.resumeCard.hidden = true; render_document(); render_sections(); render_state(); el.dialog.close(); window.scrollTo({ top: 0, behavior: "smooth" }); }
 function render_review() { const review = build_review(doc); el.reviewSummary.textContent = review.summary; el.reviewTakeaways.innerHTML = review.takeaways.map((item) => `<li>${escape_html(item)}</li>`).join(""); return review; }
 
 PLAYBACK_RATES.forEach((speed) => { const button = document.createElement("button"); button.role = "option"; button.tabIndex = -1; button.textContent = format_playback_rate(speed); button.dataset.speed = speed; el.speedMenu.append(button); });
 restore_state(); render_document(); render_sections(); persistenceReady = true;
 el.trigger.addEventListener("click", () => toggle_panel(true)); el.close.addEventListener("click", () => toggle_panel(false)); el.scrim.addEventListener("click", () => toggle_panel(false));
-el.documentTrigger.addEventListener("click", () => { pause_for_choice(); pending_document_text = ""; el.documentFile.value = ""; el.selectedFile.textContent = "No document selected"; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.dialog.showModal(); el.documentFile.focus(); });
+el.documentTrigger.addEventListener("click", () => { pause_for_choice(); pending_document_text = ""; el.documentFile.value = ""; el.dialog.querySelector('[name="documentMode"][value="reading"]').checked = true; el.selectedFile.textContent = "No document selected"; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.dialog.showModal(); el.dialog.querySelector('[name="documentMode"]:checked').focus(); });
 el.documentFile.addEventListener("change", async () => {
   const file = el.documentFile.files[0]; if (!file) return;
   pending_document_text = ""; el.selectedFile.textContent = `${file.name} · Reading…`; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.loadDocument.textContent = "Reading document…";
@@ -97,7 +98,7 @@ el.documentFile.addEventListener("change", async () => {
   } catch (error) { pending_document_text = ""; el.selectedFile.textContent = file.name; el.documentError.textContent = error.message; }
   finally { el.loadDocument.textContent = "Open in reader"; }
 });
-el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(pending_document_text, el.documentFile.files[0]?.name.replace(/\.(txt|md|pdf|docx)$/i, "") || "Untitled document")));
+el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(pending_document_text, el.documentFile.files[0]?.name.replace(/\.(txt|md|pdf|docx)$/i, "") || "Untitled document"), el.dialog.querySelector('[name="documentMode"]:checked')?.value));
 el.document.addEventListener("click", (event) => { const checkbox = event.target.closest(".worksheet-checkbox"); if (!checkbox) return; pause_for_choice(); const checked = checkbox.getAttribute("aria-pressed") !== "true"; worksheet_responses[checkbox.dataset.worksheetControl] = checked; checkbox.setAttribute("aria-pressed", String(checked)); checkbox.setAttribute("aria-label", `${checked ? "Uncheck" : "Check"} this worksheet item`); checkbox.textContent = checked ? "☑" : "☐"; persist_state(); });
 el.document.addEventListener("input", (event) => { const answer = event.target.closest(".worksheet-answer"); if (!answer) return; pause_for_choice(); worksheet_responses[answer.dataset.worksheetControl] = answer.value; persist_state(); });
 el.sectionList.addEventListener("click", (event) => { const button = event.target.closest("[data-section-jump]"); if (!button) return; const section = doc.sections[Number(button.dataset.sectionJump)]; state.sentenceIndex = section.sentences[0].index; state.wordIndex = 0; cancel_speech(); toggle_panel(false); render_state({ scroll: true }); announce(`${section.heading}. Section ${section.sectionIndex + 1} of ${doc.sections.length}. Playback paused.`); });
