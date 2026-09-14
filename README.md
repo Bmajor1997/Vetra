@@ -26,6 +26,8 @@ Finishing a document reveals one optional **Review what I heard** action. The cu
 
 Playback speed is adjustable from 1× through 3× in fine 0.05× increments. Opening the compact, scrollable speed menu pauses playback, and selecting a rate leaves playback paused.
 
+Follow-along highlighting can be personalized with Warm orange, Blue, Green, Purple, and High contrast presets. Each preset coordinates the current-passage background with the stronger active-word color, and the preference is remembered across documents.
+
 ## Product Hypothesis
 
 People already use text-to-speech tools for studying, work, accessibility, long-form reading, multitasking, and listening on the go. Existing products can generate good speech, but users may still struggle with document parsing, navigation, reliability, confusing interfaces, and understanding complex documents through audio.
