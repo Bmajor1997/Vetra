@@ -4,6 +4,11 @@ export function normalize_playback_rate(rate) { const clamped = Math.min(3, Math
 export function format_playback_rate(rate) { return `${normalize_playback_rate(rate)}×`; }
 export function split_sentences(text) { return text.match(/[^.!?]+[.!?]+[\]"')]*|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? []; }
 export function words_with_offsets(text) { return [...text.matchAll(/\S+/g)].map((match) => ({ text: match[0], start: match.index })); }
+export function speech_segment(sentence, wordIndex = 0) {
+  const safeIndex = Math.min(Math.max(0, Math.floor(Number(wordIndex) || 0)), Math.max(0, sentence.words.length - 1));
+  const start = sentence.words[safeIndex]?.start ?? 0;
+  return { text: sentence.text.slice(start), start, wordIndex: safeIndex };
+}
 export function build_document(sections, wordsPerMinute = WORDS_PER_MINUTE) {
   let sentenceCursor = 0, wordCursor = 0;
   const normalized = sections.map((section, sectionIndex) => {

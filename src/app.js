@@ -1,5 +1,5 @@
 import { sections } from "./content.js";
-import { build_document, build_review, format_playback_rate, format_time, keyboard_command, normalize_resume_snapshot, parse_document_text, PLAYBACK_RATES, progress_for_sentence, section_timing } from "./model.js";
+import { build_document, build_review, format_playback_rate, format_time, keyboard_command, normalize_resume_snapshot, parse_document_text, PLAYBACK_RATES, progress_for_sentence, section_timing, speech_segment } from "./model.js";
 let doc = build_document(sections);
 let documentTitle = "The quiet advantage of deliberate attention";
 const RESUME_KEY = "voxify.resume.v1";
@@ -42,10 +42,13 @@ function persist_state() { try { localStorage.setItem(RESUME_KEY, JSON.stringify
 function restore_state() { try { const saved = normalize_resume_snapshot(JSON.parse(localStorage.getItem(RESUME_KEY))); if (!saved) return false; doc = build_document(saved.sections); documentTitle = saved.title; state.sentenceIndex = Math.min(saved.sentenceIndex, doc.sentences.length - 1); state.wordIndex = Math.min(saved.wordIndex, Math.max(0, doc.sentences[state.sentenceIndex].words.length - 1)); state.rate = saved.rate; state.completed = saved.completed; el.speedButton.textContent = format_playback_rate(state.rate); const progress = progress_for_sentence(doc, state.sentenceIndex, state.wordIndex); if (!state.completed && progress > 0 && progress < 1) { el.resumeMessage.textContent = `Continue “${documentTitle}” — ${format_time(doc.durationSeconds * progress / state.rate)} of ${format_time(doc.durationSeconds / state.rate)}`; el.resumeCard.hidden = false; } return true; } catch { return false; } }
 function cancel_speech() { speechSynthesis.cancel(); state.utterance = null; state.playing = false; render_state(); }
 function speak_current_sentence() {
-  el.resumeCard.hidden = true; state.completed = false;
+  el.resumeCard.hidden = true;
+  if (state.completed) { state.sentenceIndex = 0; state.wordIndex = 0; }
+  state.completed = false;
   speechSynthesis.cancel(); const sentence = active_sentence(); if (!sentence) return;
-  const utterance = new SpeechSynthesisUtterance(sentence.text); utterance.rate = state.rate; state.utterance = utterance; state.playing = true;
-  utterance.onboundary = (event) => { if (event.name !== "word") return; const next = sentence.words.findIndex((word, index) => event.charIndex >= word.start && event.charIndex < (sentence.words[index + 1]?.start ?? sentence.text.length + 1)); if (next >= 0) { state.wordIndex = next; render_state({ scroll: true }); } };
+  const segment = speech_segment(sentence, state.wordIndex);
+  const utterance = new SpeechSynthesisUtterance(segment.text); utterance.rate = state.rate; state.utterance = utterance; state.playing = true;
+  utterance.onboundary = (event) => { if (event.name !== "word") return; const sourceIndex = segment.start + event.charIndex; const next = sentence.words.findIndex((word, index) => sourceIndex >= word.start && sourceIndex < (sentence.words[index + 1]?.start ?? sentence.text.length + 1)); if (next >= 0) { state.wordIndex = next; render_state({ scroll: true }); } };
   utterance.onend = () => { if (!state.playing) return; if (state.sentenceIndex < doc.sentences.length - 1) { state.sentenceIndex++; state.wordIndex = 0; speak_current_sentence(); } else { state.wordIndex = sentence.words.length - 1; state.playing = false; state.completed = true; render_state(); } };
   utterance.onerror = () => { state.playing = false; render_state(); };
   speechSynthesis.speak(utterance); render_state({ scroll: true });
