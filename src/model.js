@@ -51,6 +51,13 @@ export function build_document(sections, wordsPerMinute = WORDS_PER_MINUTE) {
   return { sections: normalized, sentences: normalized.flatMap((section) => section.sentences), totalWords, durationSeconds: Math.max(1, Math.round((totalWords / wordsPerMinute) * 60)) };
 }
 export function progress_for_sentence(document, sentenceIndex, wordIndex = 0) { const sentence = document.sentences[sentenceIndex]; if (!sentence || !document.totalWords) return 0; return Math.min(1, (sentence.startWord + Math.max(0, wordIndex)) / document.totalWords); }
+export function location_for_progress(document, progress = 0) {
+  if (!document.sentences.length || !document.totalWords) return { sentenceIndex: 0, wordIndex: 0 };
+  const safeProgress = Math.min(1, Math.max(0, Number(progress) || 0));
+  const targetWord = Math.min(document.totalWords - 1, Math.floor(safeProgress * document.totalWords));
+  const sentence = document.sentences.find((item) => targetWord < item.startWord + item.words.length) || document.sentences.at(-1);
+  return { sentenceIndex: sentence.index, wordIndex: Math.max(0, targetWord - sentence.startWord) };
+}
 export function format_time(seconds) { const safe = Math.max(0, Math.round(seconds)); return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`; }
 
 export function parse_document_text(source, fallbackTitle = "Untitled document") {

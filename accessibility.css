@@ -1,0 +1,103 @@
+/* Spoken-word emphasis grows vertically without expanding into adjacent words. */
+.word {
+  transition: transform 120ms, color 120ms, text-shadow 120ms;
+}
+
+.word.is-current {
+  font-weight: inherit;
+  transform: scaleY(1.12);
+  text-shadow: .018em 0 currentColor, -.018em 0 currentColor;
+}
+
+/* The selected reading color is also Vetra's interface accent. */
+:root[data-highlight-theme="blue"] {
+  --accent: #245f8f;
+  --accent-soft: #dce8f4;
+}
+
+:root[data-highlight-theme="green"] {
+  --accent: #2f6d45;
+  --accent-soft: #dcebdd;
+}
+
+:root[data-highlight-theme="purple"] {
+  --accent: #68458f;
+  --accent-soft: #e8def2;
+}
+
+:root[data-highlight-theme="contrast"] {
+  --accent: #5a4300;
+  --accent-soft: #fff0a8;
+}
+
+.play-button {
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.review-button,
+.worksheet-tools span,
+.timeline-complete {
+  color: var(--accent);
+}
+
+.timeline-complete {
+  background: var(--accent);
+}
+
+.highlight-options button[aria-checked="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.timeline-brand {
+  transition: filter 160ms ease;
+}
+
+:root[data-highlight-theme="blue"] .timeline-brand {
+  filter: hue-rotate(175deg) saturate(.92);
+}
+
+:root[data-highlight-theme="green"] .timeline-brand {
+  filter: hue-rotate(82deg) saturate(.82);
+}
+
+:root[data-highlight-theme="purple"] .timeline-brand {
+  filter: hue-rotate(235deg) saturate(.78);
+}
+
+:root[data-highlight-theme="contrast"] .timeline-brand {
+  filter: saturate(.78) brightness(.72);
+}
+
+.resume-card {
+  flex-wrap: wrap;
+  overflow: hidden;
+}
+
+.resume-card > div:first-child {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.resume-card strong {
+  overflow-wrap: anywhere;
+}
+
+.resume-actions {
+  max-width: 100%;
+}
+
+.highlight-dialog .eyebrow {
+  color: var(--ink);
+}
+
+.timeline {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.timeline:focus-visible {
+  border-radius: 8px;
+  outline: 3px solid color-mix(in srgb, var(--accent) 60%, white);
+  outline-offset: 4px;
+}
