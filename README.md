@@ -1,26 +1,23 @@
-# Text-to-Speech App
+# Vetra
 
-A prototype project exploring a simpler, more reliable, and more intelligent way to listen to text and documents.
+A text-to-speech document reader prototype focused on making documents easier to listen to, follow, and complete.
 
 > **Current status:** Prototype 1 implementation has begun. The first interactive listening slice is available as a dependency-free web prototype.
 
 ## Run Prototype 1
 
-Requires Node.js 20 or newer and Python 3.11 or newer. Install the local document-extraction dependencies once:
+Requires Node.js 20 or newer. Install the project dependencies once:
 
 ```bash
-python -m pip install -r requirements.txt
-```
-
-```bash
+npm install
 npm start
 ```
 
 Open `http://localhost:4173`. The prototype uses the browser's built-in speech synthesis and keeps the initial voice selection intentionally simple.
 
-Run the model tests with `npm test`.
+Run the model and document-processing tests with `npm test`. Run the real Edge interface checks with `npm run test:browser`.
 
-The prototype includes the document reader, TXT/Markdown/PDF/DOCX ingestion, heading-based section navigation, sentence and word follow-along, text-aware previous/next controls, speed selection, the proportional section-dot timeline, and local resume state. During upload, the listener explicitly chooses Reading document or Worksheet document mode. Worksheet mode turns checkbox symbols and answer blanks into interactive controls whose responses save locally; consecutive blank lines are grouped into one larger answer area, and editing pauses narration. A completed worksheet can be downloaded as a text file containing its prompts, checkbox states, and responses. Pausing or opening a listening control preserves the highlighted word, so playback resumes from that position instead of restarting the sentence. Returning listeners recover their selected mode, document, worksheet responses, and exact position in a paused state, with explicit Resume and Start over actions. Scanned-PDF OCR, writing responses back into the original DOCX, and server-backed speech are intentionally deferred to later slices.
+The prototype includes the document reader, TXT/Markdown/PDF/DOCX ingestion, heading-based section navigation, sentence and word follow-along, text-aware previous/next controls, speed selection, the proportional section-dot timeline, and local resume state. During upload, the listener explicitly chooses Reading document or Worksheet document mode. Worksheet mode turns checkbox symbols and answer blanks into interactive controls whose responses save locally; consecutive blank lines are grouped into one larger answer area, and editing pauses narration. A completed worksheet can be downloaded as either text or a clean Word document containing its prompts, checkbox states, and responses. Pausing or opening a listening control preserves the highlighted word, so playback resumes from that position instead of restarting the sentence. Returning listeners recover their selected mode, document, worksheet responses, and exact position in a paused state, with explicit Resume and Start over actions. Scanned-PDF OCR, preserving the exact layout of the original DOCX, and server-backed speech are intentionally deferred to later slices.
 
 Finishing a document reveals one optional **Review what I heard** action. The current local prototype assembles a transparent section-based summary and key takeaways without sending document content to an external service, and the listener can download that review as a text file. AI-authored reviews can replace this local strategy later without changing the completion flow.
 
@@ -115,6 +112,10 @@ The following ideas may be valuable later, but they are explicitly out of scope 
 - Complex billing systems before payment testing requires them
 
 These ideas should only move into active development after user evidence supports them.
+
+### Post-prototype roadmap note
+
+A Chrome/Edge browser extension is intentionally deferred until the web prototype is complete and validated. The extension concept is to let a listener send the current public webpage or selected webpage text into Vetra without manually creating a document. Before extension development begins, Vetra should first test a simpler public-webpage-link importer and define clear browser-permission and privacy boundaries.
 
 ## Why Use the Founder's Voice First?
 

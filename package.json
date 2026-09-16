@@ -1,1 +1,1 @@
-{"name":"vetra","version":"0.1.0","private":true,"type":"module","scripts":{"start":"node server.js","test":"node --test --test-isolation=none"}}
+{"name":"vetra","version":"0.1.0","private":true,"type":"module","scripts":{"start":"node server.js","test":"node --test --test-isolation=none","test:browser":"playwright test"},"devDependencies":{"@playwright/test":"^1.63.0"},"dependencies":{"docx":"^9.7.1","mammoth":"^1.12.3","pdf-parse":"^2.4.5"}}
