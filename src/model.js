@@ -105,6 +105,10 @@ export function normalize_resume_snapshot(snapshot) {
     completed: Boolean(snapshot.completed),
     documentMode: snapshot.documentMode === "worksheet" ? "worksheet" : "reading",
     worksheetResponses,
+    reviewOptions: {
+      summary: snapshot.reviewOptions?.summary !== false,
+      takeaways: snapshot.reviewOptions?.takeaways !== false,
+    },
     savedAt: Number(snapshot.savedAt) || Date.now(),
   };
 }
