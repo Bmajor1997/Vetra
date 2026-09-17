@@ -23,10 +23,16 @@ test("extracts headings, worksheet marks, and table content from a Word document
   assert.match(text, /__________/);
 });
 
-test("creates a valid completed Word worksheet", async () => {
-  const buffer = await create_completed_docx("Completed Plan", "Tasks\n\n[x] Approved.\n\nWhy?\nBecause it is ready.");
+test("creates a valid completed Word worksheet with explicit structure", async () => {
+  const buffer = await create_completed_docx("Completed Plan", [
+    { type: "heading", text: "Tasks" },
+    { type: "paragraph", text: "[x] Approved." },
+    { type: "paragraph", text: "Short answer" },
+  ]);
   assert.equal(buffer.subarray(0, 2).toString(), "PK");
   const extracted = await extract_document("completed.docx", buffer);
   assert.match(extracted, /Completed Plan/);
-  assert.match(extracted, /Because it is ready/);
+  assert.match(extracted, /## Tasks/);
+  assert.match(extracted, /Short answer/);
+  assert.doesNotMatch(extracted, /## Short answer/);
 });

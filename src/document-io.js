@@ -45,14 +45,14 @@ function decode_html(text) {
   });
 }
 
-export async function create_completed_docx(title, content) {
+export async function create_completed_docx(title, blocks) {
   const safeTitle = String(title || "Completed worksheet").slice(0, 300);
   const children = [new Paragraph({ text: safeTitle, heading: HeadingLevel.TITLE })];
-  for (const block of content.split("\n\n")) {
-    const text = block.trim();
-    if (!text || text === "---") continue;
-    const isHeading = !text.includes("\n") && text.length < 120 && !text.startsWith("[");
-    children.push(new Paragraph(isHeading ? { text, heading: HeadingLevel.HEADING_1 } : { text }));
+  for (const block of blocks) {
+    if (!block || !["heading", "paragraph"].includes(block.type) || typeof block.text !== "string") continue;
+    const text = block.text.trim().slice(0, 100_000);
+    if (!text) continue;
+    children.push(new Paragraph(block.type === "heading" ? { text, heading: HeadingLevel.HEADING_1 } : { text }));
   }
   return Packer.toBuffer(new Document({ sections: [{ children }] }));
 }
