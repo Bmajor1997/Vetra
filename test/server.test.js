@@ -1,0 +1,101 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { once } from "node:events";
+import { create_vetra_server, load_server_config } from "../server.js";
+
+async function with_server(options, run) {
+  const server = create_vetra_server({ logger: { error() {}, warn() {} }, ...options });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try { await run(base); } finally { server.close(); await once(server, "close"); }
+}
+const pdf = Buffer.from("%PDF-1.7\nmock");
+
+test("serves only allowlisted assets with security headers", async () => {
+  await with_server({}, async (base) => {
+    const home = await fetch(base + "/");
+    assert.equal(home.status, 200);
+    assert.equal(home.headers.get("x-content-type-options"), "nosniff");
+    assert.match(home.headers.get("content-security-policy"), /default-src 'self'/);
+    for (const path of ["/server.js", "/package.json", "/.env", "/test/model.test.js", "/%2e%2e/server.js", "/future-secret.txt"]) {
+      assert.equal((await fetch(base + path)).status, 404, path);
+    }
+    assert.equal((await fetch(base + "/", { method: "POST" })).status, 405);
+    const head = await fetch(base + "/styles.css", { method: "HEAD" });
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), "");
+  });
+});
+
+test("rejects malformed paths and unsupported API methods", async () => {
+  await with_server({}, async (base) => {
+    assert.equal((await fetch(base + "/%E0%A4")).status, 400);
+    const response = await fetch(base + "/api/help");
+    assert.equal(response.status, 405);
+    assert.equal(response.headers.get("allow"), "POST");
+  });
+});
+
+test("accepts binary documents and validates names, signatures, and content types", async () => {
+  await with_server({ extractDocument: async (_name, body) => `read ${body.length}` }, async (base) => {
+    const valid = await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": encodeURIComponent("file.pdf") }, body: pdf });
+    assert.equal(valid.status, 200);
+    assert.deepEqual(await valid.json(), { text: `read ${pdf.length}` });
+    assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/json", "X-Vetra-Filename": "file.pdf" }, body: "{}" })).status, 415);
+    assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": "file.docx" }, body: pdf })).status, 415);
+    assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: pdf })).status, 400);
+  });
+});
+
+test("enforces body limits before document parsing", async () => {
+  await with_server({ config: { max_document_bytes: 6 }, extractDocument: async () => { throw new Error("must not parse"); } }, async (base) => {
+    const response = await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": "file.pdf" }, body: pdf });
+    assert.equal(response.status, 413);
+  });
+});
+
+test("limits document parsing concurrency", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await with_server({ config: { extract_concurrency: 1 }, extractDocument: async () => { await gate; return "done"; } }, async (base) => {
+    const request = () => fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": "file.pdf" }, body: pdf });
+    const first = request();
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    const second = await request();
+    assert.equal(second.status, 429);
+    assert.equal(second.headers.get("retry-after"), "2");
+    release();
+    assert.equal((await first).status, 200);
+  });
+});
+
+test("rate limits AI help independently", async () => {
+  await with_server({ config: { help_rate_limit: 1 } }, async (base) => {
+    const request = () => fetch(base + "/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: "How do I upload?" }) });
+    assert.equal((await request()).status, 200);
+    const limited = await request();
+    assert.equal(limited.status, 429);
+    assert.ok(Number(limited.headers.get("retry-after")) >= 1);
+  });
+});
+
+test("falls back safely when AI help times out or fails", async () => {
+  await with_server({ env: { OPENAI_API_KEY: "test" }, config: { ai_timeout_ms: 10 }, fetchImpl: async (_url, { signal }) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")))) }, async (base) => {
+    const response = await fetch(base + "/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: "How do I upload?" }) });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).mode, "built-in");
+  });
+});
+
+test("provides an authentication seam without inventing accounts", async () => {
+  await with_server({ authorize: () => false }, async (base) => {
+    assert.equal((await fetch(base + "/")).status, 401);
+  });
+});
+
+test("validates environment-backed server limits", () => {
+  assert.equal(load_server_config({ VETRA_RATE_LIMIT: "7" }).general_rate_limit, 7);
+  assert.throws(() => load_server_config({ VETRA_RATE_LIMIT: "zero" }), /integer/);
+});
+
