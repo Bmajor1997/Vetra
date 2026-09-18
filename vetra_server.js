@@ -2,17 +2,17 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { create_completed_docx, extract_document } from "./src/document-io.js";
-import { local_help_answer, VETRA_HELP_CONTEXT } from "./src/help.js";
+import { create_completed_docx, extract_document } from "./app_parts/document_file_tools.js";
+import { local_help_answer, VETRA_HELP_CONTEXT } from "./app_parts/help_answers.js";
 const root = fileURLToPath(new URL(".", import.meta.url));
 const MAX_DOCUMENT_BYTES = 25_000_000;
 const public_files = new Map([
-  ["/", ["index.html", "text/html; charset=utf-8"]],
-  ["/index.html", ["index.html", "text/html; charset=utf-8"]],
-  ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
-  ["/accessibility.css", ["accessibility.css", "text/css; charset=utf-8"]],
-  ["/src/app.js", ["src/app.js", "text/javascript; charset=utf-8"]],
-  ["/src/model.js", ["src/model.js", "text/javascript; charset=utf-8"]],
+  ["/", ["vetra_home_page.html", "text/html; charset=utf-8"]],
+  ["/vetra_home_page.html", ["vetra_home_page.html", "text/html; charset=utf-8"]],
+  ["/main_look.css", ["main_look.css", "text/css; charset=utf-8"]],
+  ["/easy_to_read_look.css", ["easy_to_read_look.css", "text/css; charset=utf-8"]],
+  ["/app_parts/vetra_screen.js", ["app_parts/vetra_screen.js", "text/javascript; charset=utf-8"]],
+  ["/app_parts/document_tools.js", ["app_parts/document_tools.js", "text/javascript; charset=utf-8"]],
   ["/assets/vetra-mark.png", ["assets/vetra-mark.png", "image/png"]],
 ]);
 const security_headers = {
@@ -100,7 +100,7 @@ export function create_vetra_handler(options = {}) {
    const public_file = public_files.get(path);
    if (!public_file) throw new HttpError(404, "Not found.");
    const [relative, type] = public_file, body = await (options.readPublicFile || readFile)(resolve(root, relative));
-   set_security_headers(response, { "Content-Type": type, "Content-Length": body.length, "Cache-Control": path === "/" || path === "/index.html" ? "no-cache" : "public, max-age=3600" });
+   set_security_headers(response, { "Content-Type": type, "Content-Length": body.length, "Cache-Control": path === "/" || path === "/vetra_home_page.html" ? "no-cache" : "public, max-age=3600" });
    response.writeHead(200).end(request.method === "HEAD" ? undefined : body);
   } catch (error) { send_error(response, error, logger); }
  };

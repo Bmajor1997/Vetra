@@ -2,6 +2,23 @@
 
 A text-to-speech document reader prototype focused on making documents easier to listen to, follow, and complete.
 
+## What Each Place Contains
+
+- `app_parts/` contains the JavaScript pieces that make Vetra work.
+  - `vetra_screen.js` controls what happens on the Vetra screen.
+  - `document_tools.js` turns document text into sections, sentences, words, progress, reviews, and worksheet answers.
+  - `document_file_tools.js` reads PDF and Word files and creates completed Word worksheets.
+  - `help_answers.js` contains answers for Vetra Help.
+- `code_checks/` contains automatic checks for Vetra's code.
+- `browser_checks/` contains checks that use Vetra like a person using a web browser.
+- `vetra_server.js` starts Vetra and answers browser requests.
+- `vetra_home_page.html` contains the parts shown on the main web page.
+- `main_look.css` controls Vetra's main colors, sizes, and layout.
+- `easy_to_read_look.css` controls optional accessibility styles.
+- `browser_check_settings.js` tells Playwright how to run the browser checks.
+- `package.json` tells Node which packages and commands Vetra needs.
+- `package-lock.json` records the exact package versions installed for Vetra.
+
 > **Current status:** Prototype 1 implementation has begun. The first interactive listening slice is available as a dependency-free web prototype.
 
 ## Run Prototype 1

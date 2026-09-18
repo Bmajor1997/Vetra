@@ -21,3 +21,4 @@
 .topbar{grid-template-columns:1fr auto 1fr}
 .vetra-mark{transition:filter .2s ease}html[data-highlight-theme="blue"] .vetra-mark{filter:hue-rotate(175deg) saturate(1.15)}html[data-highlight-theme="green"] .vetra-mark{filter:hue-rotate(85deg) saturate(.9)}html[data-highlight-theme="purple"] .vetra-mark{filter:hue-rotate(225deg) saturate(.95)}html[data-highlight-theme="contrast"] .vetra-mark{filter:hue-rotate(25deg) saturate(1.2)}
 .topbar-actions{justify-self:stretch;justify-content:center;padding-right:clamp(12px,3vw,44px)}.header-tools{justify-self:stretch;justify-content:center;padding-left:clamp(12px,3vw,44px)}.assistant-trigger,body.has-document .assistant-trigger{right:22px;bottom:22px}@media(max-width:640px){.topbar{grid-template-columns:1fr auto 1fr}.topbar-actions{justify-content:flex-start;padding-right:8px}.header-tools{justify-content:flex-end;padding-left:8px}.assistant-trigger,body.has-document .assistant-trigger{right:12px;bottom:12px}}
+

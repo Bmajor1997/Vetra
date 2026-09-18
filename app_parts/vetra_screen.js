@@ -1,4 +1,4 @@
-import { build_document, build_review, build_worksheet_blocks, build_worksheet_export, format_playback_rate, format_time, keyboard_command, location_for_progress, normalize_highlight_theme, normalize_resume_snapshot, parse_document_text, PLAYBACK_RATES, progress_for_sentence, section_timing, speech_segment, worksheet_control_id, worksheet_control_type } from "./model.js";
+import { build_document, build_review, build_worksheet_blocks, build_worksheet_export, format_playback_rate, format_time, keyboard_command, location_for_progress, normalize_highlight_theme, normalize_resume_snapshot, parse_document_text, PLAYBACK_RATES, progress_for_sentence, section_timing, speech_segment, worksheet_control_id, worksheet_control_type } from "./document_tools.js";
 let doc = null;
 let documentTitle = "";
 const RESUME_KEY = "vetra.resume.v1";
@@ -191,4 +191,3 @@ document.addEventListener("keydown", (event) => {
   if (command === "toggle-playback" && doc) el.playPause.click(); else if (command === "previous-sentence" && doc && !el.previous.disabled) el.previous.click(); else if (command === "next-sentence" && doc && !el.next.disabled) el.next.click(); else if (command === "open-sections" && doc) toggle_panel(true); else if (command === "show-shortcuts") el.shortcutTrigger.click();
 });
 if (doc) render_state();
-

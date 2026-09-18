@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { create_vetra_server, load_server_config } from "../server.js";
+import { create_vetra_server, load_server_config } from "../vetra_server.js";
 
 async function with_server(options, run) {
   const server = create_vetra_server({ logger: { error() {}, warn() {} }, ...options });
@@ -18,11 +18,11 @@ test("serves only allowlisted assets with security headers", async () => {
     assert.equal(home.status, 200);
     assert.equal(home.headers.get("x-content-type-options"), "nosniff");
     assert.match(home.headers.get("content-security-policy"), /default-src 'self'/);
-    for (const path of ["/server.js", "/package.json", "/.env", "/test/model.test.js", "/%2e%2e/server.js", "/future-secret.txt"]) {
+    for (const path of ["/vetra_server.js", "/package.json", "/.env", "/code_checks/document_tools.test.js", "/%2e%2e/vetra_server.js", "/future-secret.txt"]) {
       assert.equal((await fetch(base + path)).status, 404, path);
     }
     assert.equal((await fetch(base + "/", { method: "POST" })).status, 405);
-    const head = await fetch(base + "/styles.css", { method: "HEAD" });
+    const head = await fetch(base + "/main_look.css", { method: "HEAD" });
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");
   });
@@ -98,4 +98,3 @@ test("validates environment-backed server limits", () => {
   assert.equal(load_server_config({ VETRA_RATE_LIMIT: "7" }).general_rate_limit, 7);
   assert.throws(() => load_server_config({ VETRA_RATE_LIMIT: "zero" }), /integer/);
 });
-

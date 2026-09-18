@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { build_document, build_review, build_worksheet_blocks, build_worksheet_export, format_playback_rate, format_time, HIGHLIGHT_THEMES, keyboard_command, location_for_progress, normalize_highlight_theme, normalize_playback_rate, normalize_resume_snapshot, parse_document_text, PLAYBACK_RATES, progress_for_sentence, section_timing, speech_segment, split_sentences, words_with_offsets, worksheet_control_id, worksheet_control_type } from "../src/model.js";
-import { local_help_answer } from "../src/help.js";
+import { build_document, build_review, build_worksheet_blocks, build_worksheet_export, format_playback_rate, format_time, HIGHLIGHT_THEMES, keyboard_command, location_for_progress, normalize_highlight_theme, normalize_playback_rate, normalize_resume_snapshot, parse_document_text, PLAYBACK_RATES, progress_for_sentence, section_timing, speech_segment, split_sentences, words_with_offsets, worksheet_control_id, worksheet_control_type } from "../app_parts/document_tools.js";
+import { local_help_answer } from "../app_parts/help_answers.js";
 test("splits prose into sentence navigation units", () => assert.deepEqual(split_sentences("One thought. Another question? Last one!"), ["One thought.", "Another question?", "Last one!"]));
 test("tracks word offsets for speech boundary events", () => assert.deepEqual(words_with_offsets("Read  this aloud."), [{ text: "Read", start: 0 }, { text: "this", start: 6 }, { text: "aloud.", start: 11 }]));
 test("detects worksheet checkboxes and answer blanks", () => { assert.equal(worksheet_control_type("☐"), "checkbox"); assert.equal(worksheet_control_type("☑"), "checkbox"); assert.equal(worksheet_control_type("________________"), "answer"); assert.equal(worksheet_control_type("ordinary"), null); });
@@ -28,4 +28,3 @@ test("maps global listening shortcuts while protecting interactive controls", ()
 test("calculates section duration and remaining time at playback speed", () => { const document = build_document([{ heading: "A", text: "One two." }, { heading: "B", text: "Three four five six." }], 60); const timing = section_timing(document, 1, 0.5, 2); assert.equal(timing.durationSeconds, 2); assert.equal(timing.progress, 0.25); assert.equal(timing.remainingSeconds, 1.5); });
 test("answers common Vetra help questions without an AI connection", () => { assert.match(local_help_answer("How do I upload a document?"), /Add document/); assert.match(local_help_answer("I chose the wrong document"), /Close document/); assert.match(local_help_answer("Can it read a scanned PDF?"), /OCR/); });
 test("keeps built-in help focused on Vetra", () => assert.match(local_help_answer("What is the weather?"), /uploading documents/));
-
