@@ -20,13 +20,13 @@ test("opens with a focused empty state and personalization", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Add a document" })).toBeVisible();
 });
 
-test("answers product questions in the Vetra Help side panel", async ({ page }) => {
+test("answers product questions in the Ask Vetra side panel", async ({ page }) => {
   await page.getByRole("button", { name: "Ask Vetra" }).click();
-  await expect(page.getByRole("heading", { name: "Vetra Help" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ask Vetra" })).toBeVisible();
   await page.getByPlaceholder("Ask about using Vetra…").fill("How do I change the reading speed?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/speed button on the left side/i)).toBeVisible();
-  await page.getByRole("button", { name: "Close Vetra Help" }).click();
+  await page.getByRole("button", { name: "Close Ask Vetra" }).click();
   await expect(page.locator("#assistantPanel")).toHaveAttribute("aria-hidden", "true");
 });
 

@@ -88,6 +88,64 @@ test("falls back safely when AI help times out or fails", async () => {
   });
 });
 
+test("answers from an explicitly supplied document and returns a safe section link", async () => {
+  let apiBody;
+  const fetchImpl = async (_url, options) => { apiBody = JSON.parse(options.body); return { ok: true, async json() { return { output_text: JSON.stringify({ answer: "The conclusion recommends testing.", sectionIndex: 1, sectionTitle: "Ignored model title" }) }; } }; };
+  await with_server({ env: { OPENAI_API_KEY: "test-key", OPENAI_DOCUMENT_MODEL: "document-model" }, fetchImpl }, async (base) => {
+    const document = { title: "Plan", sections: [{ heading: "Introduction", text: "Background." }, { heading: "Conclusion", text: "Test the prototype." }] };
+    const response = await fetch(base + "/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: "What is recommended?", document }) });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { answer: "The conclusion recommends testing.", mode: "document-ai", sectionIndex: 1, sectionTitle: "Conclusion" });
+    assert.equal(apiBody.model, "document-model");
+    assert.equal(apiBody.store, false);
+    assert.equal(apiBody.text.format.type, "json_schema");
+    assert.match(apiBody.input, /Test the prototype/);
+  });
+});
+
+test("does not send a document when document AI is not connected", async () => {
+  await with_server({ env: {} }, async (base) => {
+    const response = await fetch(base + "/api/help", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: "What does it say?", document: { title: "Plan", sections: [{ heading: "Start", text: "Private text." }] } }) });
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.mode, "built-in");
+    assert.match(result.answer, /require the AI connection/i);
+  });
+});
+
+test("generates a private structured AI review", async () => {
+  let apiRequest;
+  const fetchImpl = async (url, options) => {
+    apiRequest = { url, options, body: JSON.parse(options.body) };
+    return { ok: true, async json() { return { output_text: JSON.stringify({ summary: "A focused summary.", takeaways: ["First point", "Second point"] }) }; } };
+  };
+  await with_server({ env: { OPENAI_API_KEY: "test-key", OPENAI_REVIEW_MODEL: "review-model" }, fetchImpl }, async (base) => {
+    const response = await fetch(base + "/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Plan", sections: [{ heading: "Start", text: "Important source material." }] }) });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { summary: "A focused summary.", takeaways: ["First point", "Second point"], mode: "ai" });
+    assert.equal(apiRequest.url, "https://api.openai.com/v1/responses");
+    assert.equal(apiRequest.body.model, "review-model");
+    assert.equal(apiRequest.body.store, false);
+    assert.equal(apiRequest.body.text.format.type, "json_schema");
+    assert.match(apiRequest.body.input, /Important source material/);
+  });
+});
+
+test("keeps the local review available when AI review is not connected", async () => {
+  await with_server({ env: {} }, async (base) => {
+    const response = await fetch(base + "/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Plan", sections: [{ heading: "Start", text: "Text." }] }) });
+    assert.equal(response.status, 503);
+    assert.match((await response.json()).error, /local review/i);
+  });
+});
+
+test("validates AI review document content", async () => {
+  await with_server({ env: { OPENAI_API_KEY: "test-key" } }, async (base) => {
+    const response = await fetch(base + "/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Empty", sections: [] }) });
+    assert.equal(response.status, 400);
+  });
+});
+
 test("provides an authentication seam without inventing accounts", async () => {
   await with_server({ authorize: () => false }, async (base) => {
     assert.equal((await fetch(base + "/")).status, 401);
