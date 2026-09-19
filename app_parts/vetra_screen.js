@@ -18,6 +18,7 @@ const state = { sentenceIndex: 0, wordIndex: 0, rate: 1, playing: false, complet
 const $ = (selector) => document.querySelector(selector);
 const el = { emptyState: $("#emptyState"), emptyAddDocument: $("#emptyAddDocument"), reader: $("#reader"), player: $("#player"), document: $("#document"), title: $("#documentTitle"), worksheetTools: $("#worksheetTools"), downloadWorksheet: $("#downloadWorksheet"), downloadWorksheetDocx: $("#downloadWorksheetDocx"), worksheetDownloadStatus: $("#worksheetDownloadStatus"), playbackStatus: $("#playbackStatus"), highlightTrigger: $("#highlightTrigger"), highlightDialog: $("#highlightDialog"), closeHighlights: $("#closeHighlights"), doneHighlights: $("#doneHighlights"), shortcutTrigger: $("#shortcutTrigger"), shortcutDialog: $("#shortcutDialog"), closeShortcuts: $("#closeShortcuts"), resumeCard: $("#resumeCard"), resumeMessage: $("#resumeMessage"), resumePlayback: $("#resumePlayback"), startOver: $("#startOver"), completion: $("#completion"), openReview: $("#openReview"), reviewDialog: $("#reviewDialog"), closeReview: $("#closeReview"), reviewSummary: $("#reviewSummary"), reviewTakeaways: $("#reviewTakeaways"), reviewSummarySection: $("#reviewSummarySection"), reviewTakeawaysSection: $("#reviewTakeawaysSection"), includeSummary: $("#includeSummary"), includeTakeaways: $("#includeTakeaways"), downloadSummary: $("#downloadSummary"), downloadTakeaways: $("#downloadTakeaways"), downloadReview: $("#downloadReview"), sectionList: $("#sectionList"), panel: $("#sectionsPanel"), scrim: $("#panelScrim"), trigger: $("#sectionsTrigger"), close: $("#closeSections"), dialog: $("#documentDialog"), documentFile: $("#documentFile"), selectedFile: $("#selectedFile"), documentError: $("#documentError"), loadDocument: $("#loadDocument"), sectionName: $("#currentSectionName"), sectionPosition: $("#sectionPosition"), speedButton: $("#speedButton"), speedMenu: $("#speedMenu"), currentTime: $("#currentTime"), totalTime: $("#totalTime"), timeline: $("#timeline"), timelineComplete: $("#timelineComplete"), sectionDots: $("#sectionDots"), playPause: $("#playPause"), playIcon: $("#playIcon"), previous: $("#previousSentence"), next: $("#nextSentence") };
 Object.assign(el, { rememberDocument: $("#rememberDocument"), clearSavedDocument: $("#clearSavedDocument"), generateReview: $("#generateReview"), reviewStatus: $("#reviewStatus"), accessibilityTrigger: $("#accessibilityTrigger"), accessibilityDialog: $("#accessibilityDialog"), closeAccessibility: $("#closeAccessibility"), doneAccessibility: $("#doneAccessibility"), reduceMotion: $("#reduceMotion"), wordEmphasis: $("#wordEmphasis"), closeDocumentTrigger: $("#closeDocumentTrigger"), closeDocumentDialog: $("#closeDocumentDialog"), cancelCloseDocumentIcon: $("#cancelCloseDocumentIcon"), cancelCloseDocument: $("#cancelCloseDocument"), confirmCloseDocument: $("#confirmCloseDocument"), assistantTrigger: $("#assistantTrigger"), assistantPanel: $("#assistantPanel"), assistantScrim: $("#assistantScrim"), closeAssistant: $("#closeAssistant"), assistantMessages: $("#assistantMessages"), assistantForm: $("#assistantForm"), assistantQuestion: $("#assistantQuestion"), assistantUseDocument: $("#assistantUseDocument"), assistantDocumentChoice: $("#assistantDocumentChoice"), sendAssistant: $("#sendAssistant") });
+Object.assign(el, { newDocumentTrigger: $("#newDocumentTrigger"), documentsNav: $("#documentsNav"), settingsNav: $("#settingsNav"), documentSearch: $("#documentSearch"), breadcrumbTitle: $("#breadcrumbTitle") });
 
 const escape_html = (value) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
 
@@ -78,7 +79,7 @@ function render_state({ scroll = false } = {}) {
   const sentenceNode = document.querySelector(`[data-sentence="${state.sentenceIndex}"]`);
   sentenceNode?.classList.add("is-current"); sentenceNode?.querySelector(`[data-word="${state.wordIndex}"]`)?.classList.add("is-current");
   if (scroll) sentenceNode?.scrollIntoView({ behavior: "smooth", block: "center" });
-  const section = active_section(), progress = state.completed ? 1 : progress_for_sentence(doc, state.sentenceIndex, state.wordIndex); el.title.textContent = documentTitle;
+  const section = active_section(), progress = state.completed ? 1 : progress_for_sentence(doc, state.sentenceIndex, state.wordIndex); el.title.textContent = documentTitle; el.breadcrumbTitle.textContent = documentTitle;
   const timing = section_timing(doc, section.sectionIndex, progress, state.rate);
   el.sectionName.textContent = section.heading; el.sectionPosition.textContent = `Section ${section.sectionIndex + 1} of ${doc.sections.length} · ${format_time(timing.remainingSeconds)} left`;
   el.currentTime.textContent = format_time((doc.durationSeconds * progress) / state.rate); el.totalTime.textContent = format_time(doc.durationSeconds / state.rate);
@@ -131,6 +132,20 @@ restore_preferences(); const restored_document = restore_state(); show_reader(re
 el.trigger.addEventListener("click", () => toggle_panel(true)); el.close.addEventListener("click", () => toggle_panel(false)); el.scrim.addEventListener("click", () => toggle_panel(false));
 function open_document_dialog() { pause_for_choice(); pending_document_text = ""; el.documentFile.value = ""; el.dialog.querySelector('[name="documentMode"][value="reading"]').checked = true; el.selectedFile.textContent = "No document selected"; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.dialog.showModal(); el.dialog.querySelector('[name="documentMode"]:checked').focus(); }
 el.emptyAddDocument.addEventListener("click", open_document_dialog);
+el.newDocumentTrigger.addEventListener("click", open_document_dialog);
+el.documentsNav.addEventListener("click", () => { if (el.assistantPanel.classList.contains("is-open")) toggle_assistant(false); (el.reader.hidden ? el.emptyState : el.reader).scrollIntoView({ behavior: "smooth", block: "start" }); });
+el.settingsNav.addEventListener("click", () => { pause_for_choice(); el.accessibilityDialog.showModal(); el.accessibilityDialog.querySelector("input:checked")?.focus(); announce("Accessibility options opened. Playback paused."); });
+el.documentSearch.addEventListener("search", () => { document.querySelectorAll(".search-match").forEach((node) => node.classList.remove("search-match")); });
+el.documentSearch.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || !doc) return;
+  event.preventDefault();
+  document.querySelectorAll(".search-match").forEach((node) => node.classList.remove("search-match"));
+  const query = el.documentSearch.value.trim().toLocaleLowerCase();
+  if (!query) return;
+  const match = [...el.document.querySelectorAll(".sentence")].find((node) => node.textContent.toLocaleLowerCase().includes(query));
+  if (!match) { announce(`No result found for ${el.documentSearch.value.trim()}.`); return; }
+  match.classList.add("search-match"); match.scrollIntoView({ behavior: "smooth", block: "center" }); announce(`Found ${el.documentSearch.value.trim()} in the document.`);
+});
 el.documentFile.addEventListener("change", async () => {
   const file = el.documentFile.files[0]; if (!file) return;
   pending_document_text = ""; el.selectedFile.textContent = `${file.name} · Reading…`; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.loadDocument.textContent = "Reading document…";
