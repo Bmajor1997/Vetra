@@ -18,10 +18,70 @@ export async function extract_document(name, buffer) {
   }
   const parser = new PDFParse({ data: buffer });
   try {
-    const result = await parser.getText();
-    if (!result.text.trim()) throw new Error("This PDF has no selectable text. Scanned PDFs need OCR, which is not included yet.");
-    return clean_extracted_text(result.text, { removeRepeatedPageArtifacts: true });
+    const document = await parser.load();
+    const pages = [];
+    for (let page_number = 1; page_number <= document.numPages; page_number++) {
+      const page = await document.getPage(page_number);
+      try {
+        const content = await page.getTextContent({ includeMarkedContent: false, disableNormalization: false });
+        pages.push(reconstruct_pdf_page_text(content.items));
+      } finally { page.cleanup(); }
+    }
+    const text = pages.join("\f");
+    if (!text.trim()) throw new Error("This PDF has no selectable text. Scanned PDFs need OCR, which is not included yet.");
+    return clean_extracted_text(text, { removeRepeatedPageArtifacts: true });
   } finally { await parser.destroy(); }
+}
+
+export function reconstruct_pdf_page_text(items) {
+  const fragments = items
+    .filter((item) => item && typeof item.str === "string" && item.str.trim() && Array.isArray(item.transform) && item.transform.length >= 6)
+    .map((item) => ({
+      text: item.str.trim(),
+      x: Number(item.transform[4]) || 0,
+      y: Number(item.transform[5]) || 0,
+      width: Math.max(0, Number(item.width) || 0),
+      height: Math.max(1, Math.abs(Number(item.height) || Number(item.transform[3]) || 1)),
+      direction: item.dir === "rtl" ? "rtl" : "ltr",
+    }))
+    .sort((left, right) => right.y - left.y || left.x - right.x);
+  if (!fragments.length) return "";
+
+  const lines = [];
+  for (const fragment of fragments) {
+    const line = lines.find((candidate) => Math.abs(candidate.y - fragment.y) <= Math.max(2, Math.min(candidate.height, fragment.height) * .45));
+    if (line) {
+      line.fragments.push(fragment);
+      const count = line.fragments.length;
+      line.y = ((line.y * (count - 1)) + fragment.y) / count;
+      line.height = Math.max(line.height, fragment.height);
+    } else lines.push({ y: fragment.y, height: fragment.height, fragments: [fragment] });
+  }
+
+  lines.sort((left, right) => right.y - left.y);
+  return lines.map((line, index) => {
+    const rtl = line.fragments.filter((fragment) => fragment.direction === "rtl").length > line.fragments.length / 2;
+    line.fragments.sort((left, right) => rtl ? right.x - left.x : left.x - right.x);
+    const text = join_pdf_line_fragments(line.fragments, rtl);
+    const next = lines[index + 1];
+    const has_paragraph_gap = next && line.y - next.y > Math.max(line.height, next.height) * 3;
+    return text + (has_paragraph_gap ? "\n" : "");
+  }).join("\n");
+}
+
+function join_pdf_line_fragments(fragments, rtl) {
+  let output = "", previous = null;
+  for (const fragment of fragments) {
+    if (previous) {
+      const previous_edge = rtl ? previous.x : previous.x + previous.width;
+      const gap = rtl ? previous_edge - (fragment.x + fragment.width) : fragment.x - previous_edge;
+      const average_character_width = previous.text.length ? previous.width / previous.text.length : 0;
+      if (!/\s$/.test(output) && !/^\s/.test(fragment.text) && gap > Math.max(1.5, average_character_width * .2)) output += " ";
+    }
+    output += fragment.text;
+    previous = fragment;
+  }
+  return output.trim();
 }
 
 export function html_to_document_text(html) {
