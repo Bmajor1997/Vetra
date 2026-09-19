@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow } from "docx";
-import { clean_extracted_text, create_completed_docx, extract_document, html_to_document_text } from "../app_parts/document_file_tools.js";
+import { clean_extracted_text, create_completed_docx, extract_document, html_to_document_text, reconstruct_pdf_page_text } from "../app_parts/document_file_tools.js";
 
 test("preserves headings and table cells from Word conversion", () => {
   const text = html_to_document_text("<h1>Plan</h1><h2>Checks</h2><table><tr><td>☐ Ready</td><td>__________</td></tr></table>");
@@ -28,6 +28,24 @@ test("cleans repeated PDF furniture, page numbers, ligatures, and broken words",
   assert.doesNotMatch(cleaned, /Page \d/);
   assert.match(cleaned, /accessibility/);
   assert.match(cleaned, /final recommendation/);
+});
+
+test("reconstructs PDF lines by visual position instead of internal object order", () => {
+  const item = (str, x, y, width, height = 12) => ({ str, transform: [1, 0, 0, height, x, y], width, height, dir: "ltr" });
+  const text = reconstruct_pdf_page_text([
+    item("________________", 155, 650, 210),
+    item("Version:", 74, 620, 70),
+    item("Owner:", 74, 650, 60),
+    item("________________", 155, 620, 210),
+    item("Project Name:", 74, 680, 110),
+    item("________________", 195, 680, 170),
+  ]);
+  assert.equal(text, [
+    "Project Name: ________________",
+    "Owner: ________________",
+    "Version: ________________",
+  ].join("\n"));
+  assert.doesNotMatch(text, /^_+\s+(?:Owner|Version):/m);
 });
 
 test("extracts headings, worksheet marks, and table content from a Word document", async () => {
