@@ -1,0 +1,41 @@
+name: Vetra Security Checks
+
+on:
+  push:
+  pull_request:
+
+
+jobs:
+  security:
+    name: Security and Test Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Vetra's code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      
+      - name: Install Vetra dependencies
+        run: npm ci
+
+      - name: Run Vetra automated tests
+        run: npm test
+
+      - name: Check dependencies for vulnerabilities
+        run: npm audit
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Scan Vetra source code with Semgrep
+        run: semgrep scan --config auto .
+
+      - name: Scan repository for exposed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
