@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+targetRules = ["generic-api-key"]
+description = "Ignore false positive for PERSISTENCE_CONSENT_KEY"
+regexTarget = "line"
+regexes = [ '''PERSISTENCE_CONSENT_KEY''' ]
