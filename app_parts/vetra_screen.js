@@ -54,7 +54,7 @@ function render_sections() {
 const active_sentence = () => doc.sentences[state.sentenceIndex];
 const active_section = () => doc.sections[active_sentence()?.sectionIndex ?? 0];
 function announce(message) { el.playbackStatus.textContent = ""; requestAnimationFrame(() => { el.playbackStatus.textContent = message; }); }
-function show_reader(open) { el.emptyState.hidden = open; el.reader.hidden = !open; el.player.hidden = !open; el.trigger.hidden = !open; el.closeDocumentTrigger.hidden = !open; el.assistantDocumentChoice.hidden = !open; el.assistantPanel.querySelectorAll("[data-document-suggestion]").forEach((button) => { button.hidden = !open; }); if (!open) el.assistantUseDocument.checked = false; document.body.classList.toggle("has-document", open); }
+function show_reader(open) { el.emptyState.hidden = open; el.reader.hidden = !open; el.player.hidden = !open; el.trigger.hidden = !open; el.closeDocumentTrigger.hidden = !open; el.assistantDocumentChoice.hidden = !open; el.assistantPanel.querySelectorAll("[data-document-suggestion]").forEach((button) => { button.hidden = !open; }); el.assistantUseDocument.checked = open; document.body.classList.toggle("has-document", open); }
 function save_preferences() { try { localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)); } catch { /* Preferences still work for the current session. */ } }
 function apply_highlight_theme(theme) {
   const safe_theme = normalize_highlight_theme(theme);
