@@ -1,1 +1,29 @@
-{"name":"vetra","version":"0.1.0","private":true,"type":"module","scripts":{"start":"node vetra_server.js","test":"node --test --test-isolation=none","test:browser":"playwright test -c browser_check_settings.js"},"devDependencies":{"@playwright/test":"^1.63.0"},"dependencies":{"docx":"^9.7.1","mammoth":"^1.12.3","pdf-parse":"^2.4.5"}}
+{
+  "name": "vetra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node vetra_server.js",
+    "test": "node --test --test-isolation=none",
+    "test:browser": "playwright test -c browser_check_settings.js",
+    "lint": "eslint .",
+    "lint:html": "html-validate vetra_home_page.html",
+    "lint:css": "stylelint \"*.css\"",
+    "format:check": "prettier --check \"**/*.{js,json,html,css,yml,yaml,md}\"",
+    "quality": "npm run lint && npm run lint:html && npm run lint:css && npm run format:check"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "eslint": "^9.0.0",
+    "html-validate": "^10.0.0",
+    "stylelint": "^16.0.0",
+    "stylelint-config-standard": "^38.0.0",
+    "prettier": "^3.0.0"
+  },
+  "dependencies": {
+    "docx": "^9.7.1",
+    "mammoth": "^1.12.3",
+    "pdf-parse": "^2.4.5"
+  }
+}
