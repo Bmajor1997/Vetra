@@ -23,11 +23,23 @@ test("opens with a focused empty state and personalization", async ({ page }) =>
 test("answers product questions in the Ask Vetra side panel", async ({ page }) => {
   await page.getByRole("button", { name: "Ask Vetra" }).click();
   await expect(page.getByRole("heading", { name: "Ask Vetra" })).toBeVisible();
-  await page.getByPlaceholder("Ask about using Vetra…").fill("How do I change the reading speed?");
+  await page.getByPlaceholder("Ask Vetra…").fill("How do I change the reading speed?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/speed button on the left side/i)).toBeVisible();
   await page.getByRole("button", { name: "Close Ask Vetra" }).click();
   await expect(page.locator("#assistantPanel")).toHaveAttribute("aria-hidden", "true");
+});
+
+test("Ask Vetra becomes document-aware when a document is open", async ({ page }) => {
+  await page.getByRole("button", { name: "Add document" }).click();
+  await page.locator("#documentFile").setInputFiles({ name: "context.md", mimeType: "text/markdown", buffer: Buffer.from("# Context\n\n## Main idea\nVetra should use this document as context.") });
+  await page.getByRole("button", { name: "Open in reader" }).click();
+  await page.getByRole("button", { name: "Ask Vetra" }).click();
+  await expect(page.getByLabel("Use the current document as context")).toBeChecked();
+  await expect(page.getByRole("button", { name: "Summarize this document" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "What are the key takeaways?" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Explain the section I am reading" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quiz me on this document" })).toBeVisible();
 });
 
 test("uploads a heading-based reading document", async ({ page }) => {
