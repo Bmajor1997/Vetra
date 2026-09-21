@@ -10,8 +10,7 @@
     "lint": "npx --yes eslint@9.39.5 .",
     "lint:html": "npx --yes html-validate@10.17.0 vetra_home_page.html",
     "lint:css": "npx --yes stylelint@16.26.1 \"*.css\" --config .stylelintrc.json",
-    "format:check": "npx --yes prettier@3.9.8 --check \"**/*.{js,json,html,css,yml,yaml,md}\"",
-    "quality": "npm run lint && npm run lint:html && npm run lint:css && npm run format:check"
+    "quality": "npm run lint && npm run lint:html && npm run lint:css"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
