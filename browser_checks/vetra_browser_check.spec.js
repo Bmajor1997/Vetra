@@ -1,9 +1,20 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/app");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+});
+
+test("landing page introduces Vetra and validates the waitlist form", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Turn any document into an interactive listening and learning experience." })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open the prototype/ })).toHaveAttribute("href", "/app");
+  await page.getByRole("button", { name: "Join the Waitlist" }).click();
+  await expect(page.getByRole("status")).toContainText("valid email address");
+  await page.getByLabel("Get early access to Vetra").fill("reader@example.com");
+  await page.getByRole("button", { name: "Join the Waitlist" }).click();
+  await expect(page.getByRole("status")).toContainText("has not been submitted yet");
 });
 
 test("opens with a focused empty state and personalization", async ({ page }) => {

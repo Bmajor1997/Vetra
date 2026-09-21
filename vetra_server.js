@@ -7,7 +7,11 @@ import { local_help_answer, VETRA_HELP_CONTEXT } from "./app_parts/help_answers.
 const root = fileURLToPath(new URL(".", import.meta.url));
 const MAX_DOCUMENT_BYTES = 25_000_000;
 const public_files = new Map([
-  ["/", ["vetra_home_page.html", "text/html; charset=utf-8"]],
+  ["/", ["landing_page.html", "text/html; charset=utf-8"]],
+  ["/landing_page.html", ["landing_page.html", "text/html; charset=utf-8"]],
+  ["/landing_page.css", ["landing_page.css", "text/css; charset=utf-8"]],
+  ["/app_parts/landing_page.js", ["app_parts/landing_page.js", "text/javascript; charset=utf-8"]],
+  ["/app", ["vetra_home_page.html", "text/html; charset=utf-8"]],
   ["/vetra_home_page.html", ["vetra_home_page.html", "text/html; charset=utf-8"]],
   ["/main_look.css", ["main_look.css", "text/css; charset=utf-8"]],
   ["/easy_to_read_look.css", ["easy_to_read_look.css", "text/css; charset=utf-8"]],
@@ -120,7 +124,7 @@ export function create_vetra_handler(options = {}) {
    const public_file = public_files.get(path);
    if (!public_file) throw new HttpError(404, "Not found.");
    const [relative, type] = public_file, body = await (options.readPublicFile || readFile)(resolve(root, relative));
-   set_security_headers(response, { "Content-Type": type, "Content-Length": body.length, "Cache-Control": path === "/" || path === "/vetra_home_page.html" ? "no-cache" : "public, max-age=3600" });
+   set_security_headers(response, { "Content-Type": type, "Content-Length": body.length, "Cache-Control": ["/", "/landing_page.html", "/app", "/vetra_home_page.html"].includes(path) ? "no-cache" : "public, max-age=3600" });
    response.writeHead(200).end(request.method === "HEAD" ? undefined : body);
   } catch (error) { send_error(response, error, logger); }
  };

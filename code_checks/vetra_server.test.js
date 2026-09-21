@@ -19,8 +19,13 @@ test("serves only allowlisted assets with security headers", async () => {
     assert.equal(home.headers.get("x-content-type-options"), "nosniff");
     assert.match(home.headers.get("content-security-policy"), /default-src 'self'/);
     const home_text = await home.text();
-    assert.match(home_text, /class="player-wordmark"[^>]*>Vetra<\/span>/);
-    assert.doesNotMatch(home_text, /class="timeline-brand[^>]*<img/);
+    assert.match(home_text, /id="hero-title">Turn any document into an interactive listening and learning experience\.<\/h1>/);
+    assert.match(home_text, /id="waitlistForm"/);
+    const app = await fetch(base + "/app");
+    assert.equal(app.status, 200);
+    const app_text = await app.text();
+    assert.match(app_text, /class="player-wordmark"[^>]*>Vetra<\/span>/);
+    assert.doesNotMatch(app_text, /class="timeline-brand[^>]*<img/);
     for (const path of ["/vetra_server.js", "/package.json", "/.env", "/code_checks/document_tools.test.js", "/%2e%2e/vetra_server.js", "/future-secret.txt"]) {
       assert.equal((await fetch(base + path)).status, 404, path);
     }
