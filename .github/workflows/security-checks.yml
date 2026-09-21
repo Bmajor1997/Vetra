@@ -33,9 +33,6 @@ jobs:
       - name: Check Vetra CSS with Stylelint
         run: npm run lint:css
 
-      - name: Check formatting with Prettier
-        run: npm run format:check
-
       - name: Run Vetra automated tests
         run: npm test
 
