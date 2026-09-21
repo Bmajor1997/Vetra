@@ -42,6 +42,29 @@ test("Ask Vetra becomes document-aware when a document is open", async ({ page }
   await expect(page.getByRole("button", { name: "Quiz me on this document" })).toBeVisible();
 });
 
+test("navigates between Home Documents and Settings", async ({ page }) => {
+  await expect(page.getByRole("heading", { name: "Listen, learn, and pick up where you left off." })).toBeVisible();
+  await page.getByRole("button", { name: /Documents/ }).click();
+  await expect(page.getByRole("heading", { name: "Documents" })).toBeVisible();
+  await page.getByRole("button", { name: /Settings/ }).click();
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await page.getByRole("button", { name: /Home/ }).click();
+  await expect(page.getByRole("heading", { name: "Listen, learn, and pick up where you left off." })).toBeVisible();
+});
+
+test("saved documents appear in the Documents library and reopen", async ({ page }) => {
+  await page.getByRole("button", { name: "Add document" }).first().click();
+  await page.getByLabel("Remember this document and worksheet answers on this device").check();
+  await page.locator("#documentFile").setInputFiles({ name: "library.md", mimeType: "text/markdown", buffer: Buffer.from("# Library document\n\n## Notes\nThis document should be saved.") });
+  await page.getByRole("button", { name: "Open in reader" }).click();
+  await page.getByRole("button", { name: /Documents/ }).click();
+  await expect(page.getByRole("heading", { name: "library" })).toBeVisible();
+  await page.getByRole("button", { name: "Open", exact: true }).click();
+  await expect(page.locator("#documentTitle")).toHaveText("library");
+  await page.getByRole("button", { name: "Ask Vetra" }).click();
+  await expect(page.getByLabel("Use the current document as context")).toBeChecked();
+});
+
 test("uploads a heading-based reading document", async ({ page }) => {
   await page.getByRole("button", { name: "Add document" }).click();
   await page.locator("#documentFile").setInputFiles({ name: "field-notes.md", mimeType: "text/markdown", buffer: Buffer.from("# Field Notes\n\n## Start\nFirst passage.\n\n## Findings\nSecond passage.") });
