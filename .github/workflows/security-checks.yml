@@ -1,4 +1,4 @@
-name: Vetra Security Checks
+name: Vetra Code Quality & Security Checks
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   security:
-    name: Security and Test Checks
+    name: Quality, Security, and Test Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -23,6 +23,18 @@ jobs:
       
       - name: Install Vetra dependencies
         run: npm ci
+
+      - name: Check JavaScript with ESLint
+        run: npm run lint
+
+      - name: Validate Vetra HTML
+        run: npm run lint:html
+
+      - name: Check Vetra CSS with Stylelint
+        run: npm run lint:css
+
+      - name: Check formatting with Prettier
+        run: npm run format:check
 
       - name: Run Vetra automated tests
         run: npm test
