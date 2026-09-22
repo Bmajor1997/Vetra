@@ -9,7 +9,7 @@
   text-shadow: .018em 0 currentColor, -.018em 0 currentColor;
 }
 
-/* The selected reading color is also Vetra's interface accent. */
+/* The selected reading color is also Votic's interface accent. */
 :root[data-highlight-theme="blue"] {
   --accent: #245f8f;
   --accent-soft: #dce8f4;
