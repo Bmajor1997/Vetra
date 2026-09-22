@@ -59,7 +59,7 @@ Finishing a document reveals one optional **Review what I heard** action. Votic 
 
 **Ask Votic** provides built-in product guidance without needing AI. When a document is open, the listener may explicitly select **Use the current document to answer this question**. If AI is connected, Votic sends that question and document text in a stateless `store: false` request, answers only from the supplied document, and can offer a verified link to the most relevant document section. Set `OPENAI_DOCUMENT_MODEL` to choose a document-question model, or let it use `OPENAI_MODEL`/the application default.
 
-Playback speed is adjustable from 1× through 3× in fine 0.05× increments. Opening the compact, scrollable speed menu pauses playback, and selecting a rate leaves playback paused.
+Playback speed is adjustable in 0.1× increments across Votic's planned 0.5× through 6× range. The mobile reader uses the same normalized rate model, avoiding floating-point display artifacts. Opening the compact, scrollable speed menu pauses playback, and selecting a rate leaves playback paused.
 
 Follow-along highlighting can be personalized with Warm orange, Blue, Green, Purple, and High contrast presets. Each preset coordinates the current-passage background with the stronger active-word color, and the preference is remembered across documents.
 
