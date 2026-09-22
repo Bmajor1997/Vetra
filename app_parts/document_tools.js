@@ -1,8 +1,8 @@
 export const WORDS_PER_MINUTE = 180;
-export const PLAYBACK_RATES = Array.from({ length: 41 }, (_, index) => Number((1 + index * 0.05).toFixed(2)));
+export const PLAYBACK_RATES = Array.from({ length: 56 }, (_, index) => Number((0.5 + index * 0.1).toFixed(1)));
 export const HIGHLIGHT_THEMES = ["warm", "blue", "green", "purple", "contrast"];
 export function normalize_highlight_theme(theme) { return HIGHLIGHT_THEMES.includes(theme) ? theme : "warm"; }
-export function normalize_playback_rate(rate) { const clamped = Math.min(3, Math.max(1, Number(rate) || 1)); return Number((Math.round(clamped * 20) / 20).toFixed(2)); }
+export function normalize_playback_rate(rate) { const clamped = Math.min(6, Math.max(0.5, Number(rate) || 1)); return Number((Math.round(clamped * 10) / 10).toFixed(1)); }
 export function format_playback_rate(rate) { return `${normalize_playback_rate(rate)}×`; }
 export function split_sentences(text) { return text.match(/[^.!?]+[.!?]+[\]"')]*|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? []; }
 export function words_with_offsets(text) { return [...text.matchAll(/\S+/g)].map((match) => ({ text: match[0], start: match.index })); }

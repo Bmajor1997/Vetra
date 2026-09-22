@@ -5,48 +5,66 @@ on:
   pull_request:
   workflow_dispatch:
 
-
 jobs:
   security:
-    name: Quality, Security, and Test Checks
+    name: Web Quality, Security, and Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: Get Votic's code
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      
       - name: Install Votic dependencies
         run: npm ci
-
       - name: Check JavaScript with ESLint
         run: npm run lint
-
       - name: Validate Votic HTML
         run: npm run lint:html
-
       - name: Check Votic CSS with Stylelint
         run: npm run lint:css
-
       - name: Run Votic automated tests
         run: npm test
-
       - name: Check dependencies for vulnerabilities
         run: npm audit
-
       - name: Install Semgrep
         run: pip install semgrep
-
       - name: Scan Votic source code with Semgrep
         run: semgrep scan --config auto .
-
       - name: Scan repository for exposed secrets
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_VERSION: 8.30.1
+
+  mobile:
+    name: React Native / Expo CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Get Votic's code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install mobile dependencies
+        run: npm install --ignore-scripts
+      - name: Type-check React Native code
+        run: npm run typecheck
+      - name: Validate Expo configuration
+        run: npx expo config --type public
+      - name: Check Expo dependency compatibility
+        run: npx expo install --check
+      - name: Install Semgrep for mobile security scanning
+        run: pip install semgrep
+        working-directory: .
+      - name: Scan React Native TypeScript with Semgrep
+        run: semgrep scan --config auto apps/mobile --error
+        working-directory: .
+      - name: Audit mobile production dependencies
+        run: npm audit --omit=dev --audit-level=high
