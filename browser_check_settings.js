@@ -10,7 +10,7 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: "node vetra_server.js",
+    command: "node votic_server.js",
     port: 4174,
     env: { PORT: "4174" },
     reuseExistingServer: true,

@@ -5,14 +5,14 @@ A text-to-speech document reader prototype focused on making documents easier to
 ## What Each Place Contains
 
 - `app_parts/` contains the JavaScript pieces that make Votic work.
-  - `vetra_screen.js` controls what happens on the Votic screen.
+  - `votic_screen.js` controls what happens on the Votic screen.
   - `document_tools.js` turns document text into sections, sentences, words, progress, reviews, and worksheet answers.
   - `document_file_tools.js` reads PDF and Word files and creates completed Word worksheets.
   - `help_answers.js` contains answers for Votic Help.
 - `code_checks/` contains automatic checks for Votic's code.
 - `browser_checks/` contains checks that use Votic like a person using a web browser.
-- `vetra_server.js` starts Votic and answers browser requests.
-- `vetra_home_page.html` contains the parts shown on the main web page.
+- `votic_server.js` starts Votic and answers browser requests.
+- `votic_home_page.html` contains the parts shown on the main web page.
 - `main_look.css` controls Votic's main colors, sizes, and layout.
 - `easy_to_read_look.css` controls optional accessibility styles.
 - `browser_check_settings.js` tells Playwright how to run the browser checks.

@@ -95,7 +95,7 @@ test("stores document content only after explicit consent and can clear it", asy
   await expect(page.getByLabel(/Remember this document/)).not.toBeChecked();
   await page.locator("#documentFile").setInputFiles({ name: "private.md", mimeType: "text/markdown", buffer: Buffer.from("# Private\n\nSession only.") });
   await page.getByRole("button", { name: "Open in reader" }).click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("vetra.resume.v1"))).toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("votic.resume.v1"))).toBeNull();
   await page.getByRole("button", { name: "Close document", exact: true }).click();
   await page.getByRole("button", { name: "Close document", exact: true }).last().click();
 
@@ -103,10 +103,10 @@ test("stores document content only after explicit consent and can clear it", asy
   await page.getByLabel(/Remember this document/).check();
   await page.locator("#documentFile").setInputFiles({ name: "saved.md", mimeType: "text/markdown", buffer: Buffer.from("# Saved\n\nKeep this.") });
   await page.getByRole("button", { name: "Open in reader" }).click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("vetra.resume.v1"))).not.toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("votic.resume.v1"))).not.toBeNull();
   await page.getByRole("button", { name: "Close document", exact: true }).click();
   await page.getByRole("button", { name: "Clear saved data" }).click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("vetra.resume.v1"))).toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("votic.resume.v1"))).toBeNull();
 });
 
 test("completes worksheet controls and downloads a Word copy", async ({ page }) => {

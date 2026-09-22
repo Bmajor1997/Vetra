@@ -1,14 +1,14 @@
 {
-  "name": "vetra",
+  "name": "votic",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node vetra_server.js",
+    "start": "node votic_server.js",
     "test": "node --test --test-isolation=none",
     "test:browser": "playwright test -c browser_check_settings.js",
     "lint": "npx --yes eslint@9.39.5 .",
-    "lint:html": "npx --yes html-validate@10.17.0 vetra_home_page.html",
+    "lint:html": "npx --yes html-validate@10.17.0 votic_home_page.html",
     "lint:css": "npx --yes stylelint@16.26.1 \"*.css\" --config .stylelintrc.json",
     "quality": "npm run lint && npm run lint:html && npm run lint:css"
   },

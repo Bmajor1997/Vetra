@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { create_vetra_server, load_server_config } from "../vetra_server.js";
+import { create_votic_server, load_server_config } from "../votic_server.js";
 
 async function with_server(options, run) {
-  const server = create_vetra_server({ logger: { error() {}, warn() {} }, ...options });
+  const server = create_votic_server({ logger: { error() {}, warn() {} }, ...options });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -21,14 +21,14 @@ test("serves only allowlisted assets with security headers", async () => {
     const home_text = await home.text();
     assert.match(home_text, /class="player-wordmark"[^>]*>Votic<\/span>/);
     assert.doesNotMatch(home_text, /class="timeline-brand[^>]*<img/);
-    for (const path of ["/vetra_server.js", "/package.json", "/.env", "/code_checks/document_tools.test.js", "/%2e%2e/vetra_server.js", "/future-secret.txt"]) {
+    for (const path of ["/votic_server.js", "/package.json", "/.env", "/code_checks/document_tools.test.js", "/%2e%2e/votic_server.js", "/future-secret.txt"]) {
       assert.equal((await fetch(base + path)).status, 404, path);
     }
     assert.equal((await fetch(base + "/", { method: "POST" })).status, 405);
     const head = await fetch(base + "/main_look.css", { method: "HEAD" });
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");
-    const logo = await fetch(base + "/assets/vetra-mark.png");
+    const logo = await fetch(base + "/assets/votic-mark.png");
     assert.equal(logo.status, 200);
     assert.equal(logo.headers.get("content-type"), "image/png");
     assert.ok((await logo.arrayBuffer()).byteLength > 0);
@@ -46,18 +46,18 @@ test("rejects malformed paths and unsupported API methods", async () => {
 
 test("accepts binary documents and validates names, signatures, and content types", async () => {
   await with_server({ extractDocument: async (_name, body) => `read ${body.length}` }, async (base) => {
-    const valid = await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": encodeURIComponent("file.pdf") }, body: pdf });
+    const valid = await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Votic-Filename": encodeURIComponent("file.pdf") }, body: pdf });
     assert.equal(valid.status, 200);
     assert.deepEqual(await valid.json(), { text: `read ${pdf.length}` });
-    assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/json", "X-Vetra-Filename": "file.pdf" }, body: "{}" })).status, 415);
-    assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": "file.docx" }, body: pdf })).status, 415);
+    assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/json", "X-Votic-Filename": "file.pdf" }, body: "{}" })).status, 415);
+    assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Votic-Filename": "file.docx" }, body: pdf })).status, 415);
     assert.equal((await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: pdf })).status, 400);
   });
 });
 
 test("enforces body limits before document parsing", async () => {
   await with_server({ config: { max_document_bytes: 6 }, extractDocument: async () => { throw new Error("must not parse"); } }, async (base) => {
-    const response = await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": "file.pdf" }, body: pdf });
+    const response = await fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Votic-Filename": "file.pdf" }, body: pdf });
     assert.equal(response.status, 413);
   });
 });
@@ -66,7 +66,7 @@ test("limits document parsing concurrency", async () => {
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   await with_server({ config: { extract_concurrency: 1 }, extractDocument: async () => { await gate; return "done"; } }, async (base) => {
-    const request = () => fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Vetra-Filename": "file.pdf" }, body: pdf });
+    const request = () => fetch(base + "/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Votic-Filename": "file.pdf" }, body: pdf });
     const first = request();
     await new Promise((resolve) => setTimeout(resolve, 25));
     const second = await request();
@@ -160,6 +160,6 @@ test("provides an authentication seam without inventing accounts", async () => {
 });
 
 test("validates environment-backed server limits", () => {
-  assert.equal(load_server_config({ VETRA_RATE_LIMIT: "7" }).general_rate_limit, 7);
-  assert.throws(() => load_server_config({ VETRA_RATE_LIMIT: "zero" }), /integer/);
+  assert.equal(load_server_config({ VOTIC_RATE_LIMIT: "7" }).general_rate_limit, 7);
+  assert.throws(() => load_server_config({ VOTIC_RATE_LIMIT: "zero" }), /integer/);
 });
