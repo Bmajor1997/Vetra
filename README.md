@@ -1,23 +1,23 @@
-# Vetra
+# Votic
 
 A text-to-speech document reader prototype focused on making documents easier to listen to, follow, and complete.
 
 ## What Each Place Contains
 
-- `app_parts/` contains the JavaScript pieces that make Vetra work.
-  - `vetra_screen.js` controls what happens on the Vetra screen.
+- `app_parts/` contains the JavaScript pieces that make Votic work.
+  - `vetra_screen.js` controls what happens on the Votic screen.
   - `document_tools.js` turns document text into sections, sentences, words, progress, reviews, and worksheet answers.
   - `document_file_tools.js` reads PDF and Word files and creates completed Word worksheets.
-  - `help_answers.js` contains answers for Vetra Help.
-- `code_checks/` contains automatic checks for Vetra's code.
-- `browser_checks/` contains checks that use Vetra like a person using a web browser.
-- `vetra_server.js` starts Vetra and answers browser requests.
+  - `help_answers.js` contains answers for Votic Help.
+- `code_checks/` contains automatic checks for Votic's code.
+- `browser_checks/` contains checks that use Votic like a person using a web browser.
+- `vetra_server.js` starts Votic and answers browser requests.
 - `vetra_home_page.html` contains the parts shown on the main web page.
-- `main_look.css` controls Vetra's main colors, sizes, and layout.
+- `main_look.css` controls Votic's main colors, sizes, and layout.
 - `easy_to_read_look.css` controls optional accessibility styles.
 - `browser_check_settings.js` tells Playwright how to run the browser checks.
-- `package.json` tells Node which packages and commands Vetra needs.
-- `package-lock.json` records the exact package versions installed for Vetra.
+- `package.json` tells Node which packages and commands Votic needs.
+- `package-lock.json` records the exact package versions installed for Votic.
 
 > **Current status:** Prototype 1 implementation has begun. The first interactive listening slice is available as a dependency-free web prototype.
 
@@ -36,9 +36,9 @@ Run the model and document-processing tests with `npm test`. Run the real Edge i
 
 The prototype includes the document reader, TXT/Markdown/PDF/DOCX ingestion, heading-based section navigation, sentence and word follow-along, text-aware previous/next controls, speed selection, the proportional section-dot timeline, and local resume state. Word extraction preserves headings, tables, ordered lists, and bulleted lists. PDF cleanup removes repeated page headers/footers and page numbers when page boundaries are available, repairs common ligatures, and reconnects words split by line-end hyphenation. During upload, the listener explicitly chooses Reading document or Worksheet document mode. Worksheet mode turns checkbox symbols and answer blanks into interactive controls whose responses save locally; consecutive blank lines are grouped into one larger answer area, and editing pauses narration. A completed worksheet can be downloaded as either text or a clean Word document containing its prompts, checkbox states, and responses. Pausing or opening a listening control preserves the highlighted word, so playback resumes from that position instead of restarting the sentence. Returning listeners recover their selected mode, document, worksheet responses, and exact position in a paused state, with explicit Resume and Start over actions. Scanned-PDF OCR, preserving the exact layout of the original DOCX, and server-backed speech are intentionally deferred to later slices.
 
-Finishing a document reveals one optional **Review what I heard** action. Vetra immediately shows a local section-based review and, when `OPENAI_API_KEY` is configured, offers an explicit **Generate AI review** action. That action sends the current document text to the OpenAI Responses API, requests a structured summary and three to eight key takeaways, and sets `store: false`; if the request is unavailable or invalid, the local review remains in place. The listener can include either review component or both and download them separately or together as text files. Set `OPENAI_REVIEW_MODEL` to choose a review model, or let it use `OPENAI_MODEL`/the application default.
+Finishing a document reveals one optional **Review what I heard** action. Votic immediately shows a local section-based review and, when `OPENAI_API_KEY` is configured, offers an explicit **Generate AI review** action. That action sends the current document text to the OpenAI Responses API, requests a structured summary and three to eight key takeaways, and sets `store: false`; if the request is unavailable or invalid, the local review remains in place. The listener can include either review component or both and download them separately or together as text files. Set `OPENAI_REVIEW_MODEL` to choose a review model, or let it use `OPENAI_MODEL`/the application default.
 
-**Ask Vetra** provides built-in product guidance without needing AI. When a document is open, the listener may explicitly select **Use the current document to answer this question**. If AI is connected, Vetra sends that question and document text in a stateless `store: false` request, answers only from the supplied document, and can offer a verified link to the most relevant document section. Set `OPENAI_DOCUMENT_MODEL` to choose a document-question model, or let it use `OPENAI_MODEL`/the application default.
+**Ask Votic** provides built-in product guidance without needing AI. When a document is open, the listener may explicitly select **Use the current document to answer this question**. If AI is connected, Votic sends that question and document text in a stateless `store: false` request, answers only from the supplied document, and can offer a verified link to the most relevant document section. Set `OPENAI_DOCUMENT_MODEL` to choose a document-question model, or let it use `OPENAI_MODEL`/the application default.
 
 Playback speed is adjustable from 1× through 3× in fine 0.05× increments. Opening the compact, scrollable speed menu pauses playback, and selecting a rate leaves playback paused.
 
@@ -134,7 +134,7 @@ These ideas should only move into active development after user evidence support
 
 ### Post-prototype roadmap note
 
-A Chrome/Edge browser extension is intentionally deferred until the web prototype is complete and validated. The extension concept is to let a listener send the current public webpage or selected webpage text into Vetra without manually creating a document. Before extension development begins, Vetra should first test a simpler public-webpage-link importer and define clear browser-permission and privacy boundaries.
+A Chrome/Edge browser extension is intentionally deferred until the web prototype is complete and validated. The extension concept is to let a listener send the current public webpage or selected webpage text into Votic without manually creating a document. Before extension development begins, Votic should first test a simpler public-webpage-link importer and define clear browser-permission and privacy boundaries.
 
 ## Why Use the Founder's Voice First?
 
