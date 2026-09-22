@@ -1,9 +1,9 @@
 import { createContext,PropsWithChildren,useContext,useEffect,useMemo,useState } from "react";
 import { useColorScheme } from "react-native";
 import { loadThemePreferences,saveThemePreferences } from "../preferences/preferenceStorage";
-export type AccentName="blue"|"purple"|"orange"|"red";
+export type AccentName="blue"|"purple"|"orange"|"red"|"teal"|"emerald"|"indigo"|"rose"|"amber";
 export type AppearanceMode="light"|"dark"|"system";
-const accents:Record<AccentName,string>={blue:"#2563EB",purple:"#7C3AED",orange:"#B45309",red:"#B91C1C"};
+const accents:Record<AccentName,string>={orange:"#B45309",blue:"#2563EB",purple:"#7C3AED",red:"#B91C1C",teal:"#0F766E",emerald:"#15803D",indigo:"#4338CA",rose:"#BE185D",amber:"#A16207"};
 function withAlpha(hex:string,alpha:string){return `${hex}${alpha}`;}
 const palettes={light:{background:"#FFFFFF",surface:"#FFFFFF",surfaceMuted:"#F5F5F4",text:"#292D32",mutedText:"#626262",border:"#E5E7EB"},dark:{background:"#292D32",surface:"#32373D",surfaceMuted:"#24282D",text:"#FAFAF9",mutedText:"#D1D5DB",border:"#4B5158"}} as const;
 const C=createContext<any>(null);
