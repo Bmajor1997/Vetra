@@ -1,0 +1,10 @@
+import { createContext,PropsWithChildren,useContext,useMemo,useState } from "react";import { VoticDocument } from "./types";
+type Library={documents:VoticDocument[];activeDocument:VoticDocument|null;addTextDocument:(sourceName:string,text:string)=>VoticDocument;openDocument:(id:string)=>void;updateProgress:(id:string,progress:number,sentenceIndex?:number,wordIndex?:number)=>void};
+const C=createContext<Library|null>(null);
+function titleFrom(sourceName:string,text:string){const fileTitle=sourceName.replace(/\.(txt|md)$/i,"").trim();const first=text.split(/\r?\n/).map(v=>v.trim()).find(Boolean)?.replace(/^#+\s*/,"").slice(0,80);return fileTitle||first||"Untitled document"}
+export function DocumentLibraryProvider({children}:PropsWithChildren){const [documents,setDocuments]=useState<VoticDocument[]>([]);const [activeId,setActiveId]=useState<string|null>(null);const activeDocument=useMemo(()=>documents.find(d=>d.id===activeId)||null,[documents,activeId]);
+function addTextDocument(sourceName:string,text:string){const now=Date.now();const doc:VoticDocument={id:"doc-"+now+"-"+Math.random().toString(36).slice(2,8),title:titleFrom(sourceName,text),sourceName,plainText:text.trim(),importedAt:now,updatedAt:now,progress:0,sentenceIndex:0,wordIndex:0,playbackRate:1};setDocuments(current=>[doc,...current]);setActiveId(doc.id);return doc}
+function openDocument(id:string){setActiveId(id)}
+function updateProgress(id:string,progress:number,sentenceIndex=0,wordIndex=0){setDocuments(current=>current.map(d=>d.id===id?{...d,progress:Math.max(0,Math.min(1,progress)),sentenceIndex,wordIndex,updatedAt:Date.now()}:d))}
+return <C.Provider value={{documents,activeDocument,addTextDocument,openDocument,updateProgress}}>{children}</C.Provider>}
+export function useDocumentLibrary(){const c=useContext(C);if(!c)throw new Error("useDocumentLibrary must be used inside DocumentLibraryProvider");return c}
