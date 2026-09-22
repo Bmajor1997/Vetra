@@ -38,7 +38,7 @@ The mobile client uses bottom navigation for the three primary destinations: **H
 
 ### Mobile-first implementation plan
 
-The first mobile slices are intentionally incremental: establish the Expo/TypeScript shell, navigation and theme architecture; migrate document importing and library behavior; connect the reader and playback logic with 0.1× speed steps; migrate accessibility preferences; then add persistence, background playback, and other native capabilities. Existing working web behavior should be reused or adapted rather than rewritten without a reason.
+The mobile foundation now includes the Expo/TypeScript shell, bottom navigation, centralized theming, accessibility preferences, a native document picker/library, TXT/Markdown local import, PDF/DOCX extraction through the existing Votic API, and native text-to-speech reader controls with 0.1× speed steps. Persistence, production API configuration/authentication, background playback, lock-screen controls, voice selection, and richer document navigation remain future slices. Existing working web behavior should be reused or adapted rather than rewritten without a reason.
 
 ## Run the existing web prototype
 
