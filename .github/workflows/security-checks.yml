@@ -1,4 +1,4 @@
-name: Vetra Code Quality & Security Checks
+name: Votic Code Quality & Security Checks
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get Vetra's code
+      - name: Get Votic's code
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -21,19 +21,19 @@ jobs:
           node-version: 24
           cache: npm
       
-      - name: Install Vetra dependencies
+      - name: Install Votic dependencies
         run: npm ci
 
       - name: Check JavaScript with ESLint
         run: npm run lint
 
-      - name: Validate Vetra HTML
+      - name: Validate Votic HTML
         run: npm run lint:html
 
-      - name: Check Vetra CSS with Stylelint
+      - name: Check Votic CSS with Stylelint
         run: npm run lint:css
 
-      - name: Run Vetra automated tests
+      - name: Run Votic automated tests
         run: npm test
 
       - name: Check dependencies for vulnerabilities
@@ -42,7 +42,7 @@ jobs:
       - name: Install Semgrep
         run: pip install semgrep
 
-      - name: Scan Vetra source code with Semgrep
+      - name: Scan Votic source code with Semgrep
         run: semgrep scan --config auto .
 
       - name: Scan repository for exposed secrets
