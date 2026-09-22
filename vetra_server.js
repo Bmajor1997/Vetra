@@ -90,14 +90,14 @@ export function create_vetra_handler(options = {}) {
    if (request.method === "POST" && path === "/api/help") {
       rate_limit(`${client}:help`, config.help_rate_limit);
       const { question, document } = await read_json_body(request, 500_000, config.body_timeout_ms);
-      if (typeof question !== "string" || !question.trim() || question.length > 1000) throw new HttpError(400, "Type a shorter question about using Vetra.");
+      if (typeof question !== "string" || !question.trim() || question.length > 1000) throw new HttpError(400, "Type a shorter question about using Votic.");
       let answer = local_help_answer(question), mode = "built-in", sectionIndex = null, sectionTitle = null;
       if (document) {
         const safe_document = validate_review_document(document);
-        if (!env.OPENAI_API_KEY) answer = "Questions about this document require the AI connection. I can still help you use Vetra without sending the document.";
+        if (!env.OPENAI_API_KEY) answer = "Questions about this document require the AI connection. I can still help you use Votic without sending the document.";
         else try { ({ answer, sectionIndex, sectionTitle } = await answer_document_question(question, safe_document, { env, fetch_impl, timeout_ms: config.ai_timeout_ms })); mode = "document-ai"; }
-        catch { logger.warn?.("Vetra document help unavailable; using built-in guidance"); answer = "I could not answer from this document right now. Your document remains open, and I can still help with Vetra’s controls."; }
-      } else if (env.OPENAI_API_KEY) { try { answer = await answer_with_ai(question, { env, fetch_impl, timeout_ms: config.ai_timeout_ms }); mode = "ai"; } catch { logger.warn?.("Vetra AI help unavailable; using built-in guidance"); } }
+        catch { logger.warn?.("Votic document help unavailable; using built-in guidance"); answer = "I could not answer from this document right now. Your document remains open, and I can still help with Votic’s controls."; }
+      } else if (env.OPENAI_API_KEY) { try { answer = await answer_with_ai(question, { env, fetch_impl, timeout_ms: config.ai_timeout_ms }); mode = "ai"; } catch { logger.warn?.("Votic AI help unavailable; using built-in guidance"); } }
       send_json(response, 200, { answer, mode, sectionIndex, sectionTitle });
     return;
   }
@@ -110,8 +110,8 @@ export function create_vetra_handler(options = {}) {
         const review = await generate_review_with_ai(document, { env, fetch_impl, timeout_ms: config.ai_timeout_ms });
         send_json(response, 200, { ...review, mode: "ai" });
       } catch {
-        logger.warn?.("Vetra AI review unavailable");
-        throw new HttpError(503, "Vetra could not generate an AI review right now. The local review is still available.");
+        logger.warn?.("Votic AI review unavailable");
+        throw new HttpError(503, "Votic could not generate an AI review right now. The local review is still available.");
       }
     return;
   }
@@ -128,7 +128,7 @@ export function create_vetra_handler(options = {}) {
 export function create_vetra_server(options = {}) { return createServer(create_vetra_handler(options)); }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
  const port = positive_integer("PORT", 4173);
- create_vetra_server().listen(port, () => console.log(`Vetra is ready at http://localhost:${port}`));
+ create_vetra_server().listen(port, () => console.log(`Votic is ready at http://localhost:${port}`));
 }
 
 async function read_body(request, limit, timeout_ms) {
@@ -141,25 +141,25 @@ async function read_json_body(request, limit, timeout_ms) {
   require_content_type(request, "application/json");
   const body = await read_body(request, limit, timeout_ms);
   try { return JSON.parse(body.toString("utf8")); }
-  catch { throw new HttpError(400, "Vetra received invalid JSON."); }
+  catch { throw new HttpError(400, "Votic received invalid JSON."); }
 }
 function safe_request_path(request) { try { return decodeURIComponent(new URL(request.url, "http://localhost").pathname); } catch { throw new HttpError(400, "The request URL is malformed."); } }
 function set_security_headers(response, extra = {}) { for (const [key, value] of Object.entries({ ...security_headers, ...extra })) response.setHeader(key, value); }
 function send_json(response, status, body, headers = {}) { set_security_headers(response, { "Content-Type": "application/json; charset=utf-8", ...headers }); response.writeHead(status).end(JSON.stringify(body)); }
-function send_error(response, error, logger) { const known = error instanceof HttpError; if (!known) logger.error?.("Unexpected Vetra request failure", { name: error?.name }); send_json(response, known ? error.status : 500, { error: known ? error.message : "Vetra could not complete that request." }, known ? error.headers : {}); }
+function send_error(response, error, logger) { const known = error instanceof HttpError; if (!known) logger.error?.("Unexpected Votic request failure", { name: error?.name }); send_json(response, known ? error.status : 500, { error: known ? error.message : "Votic could not complete that request." }, known ? error.headers : {}); }
 function require_content_type(request, expected) { const actual = String(request.headers["content-type"] || "").split(";", 1)[0].trim().toLowerCase(); if (actual !== expected) throw new HttpError(415, `Content-Type must be ${expected}.`); }
 function safe_filename(request) { const encoded = request.headers["x-vetra-filename"]; if (typeof encoded !== "string" || encoded.length > 1000) throw new HttpError(400, "A document filename is required."); let name; try { name = decodeURIComponent(encoded); } catch { throw new HttpError(400, "The document filename is malformed."); } name = name.split(/[\\/]/).at(-1); if (!name || !/\.(pdf|docx)$/i.test(name)) throw new HttpError(415, "Choose a PDF or DOCX document."); return name; }
 function valid_signature(name, body) { if (/\.pdf$/i.test(name)) return body.subarray(0, 5).toString("ascii") === "%PDF-"; if (/\.docx$/i.test(name)) return body.length >= 4 && body[0] === 0x50 && body[1] === 0x4b && [3, 5, 7].includes(body[2]) && [4, 6, 8].includes(body[3]); return false; }
 function extraction_error_message(error) {
   const message = String(error?.message || error);
   if (/password|encrypted/i.test(message)) return "This document is password-protected. Remove the password and upload it again.";
-  if (/no selectable text|scanned/i.test(message)) return "Vetra could not find selectable text in this PDF. It may be a scanned document; scanned-PDF reading is not supported yet.";
+  if (/no selectable text|scanned/i.test(message)) return "Votic could not find selectable text in this PDF. It may be a scanned document; scanned-PDF reading is not supported yet.";
   if (/not a zip|package not found|file is not a zip|eof marker|malformed|invalid pdf/i.test(message)) return "This file appears to be damaged or is not a valid PDF or Word document. Try opening and saving it again, then re-upload it.";
-  return message || "Vetra could not read this document. Try saving a fresh copy or uploading a TXT version.";
+  return message || "Votic could not read this document. Try saving a fresh copy or uploading a TXT version.";
 }
 function export_error_message(error) {
   const message = String(error?.message || error);
-  return message || "Vetra could not create the Word document. Please try the text download instead.";
+  return message || "Votic could not create the Word document. Please try the text download instead.";
 }
 async function answer_with_ai(question, { env, fetch_impl, timeout_ms }) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout_ms);
@@ -181,7 +181,7 @@ async function answer_document_question(question, document, { env, fetch_impl, t
   } finally { clearTimeout(timer); }
 }
 function validate_review_document(payload) {
-  if (!payload || typeof payload !== "object" || typeof payload.title !== "string" || !Array.isArray(payload.sections)) throw new HttpError(400, "Vetra received an invalid review request.");
+  if (!payload || typeof payload !== "object" || typeof payload.title !== "string" || !Array.isArray(payload.sections)) throw new HttpError(400, "Votic received an invalid review request.");
   const title = payload.title.trim().slice(0, 300);
   const sections = payload.sections.slice(0, 200).map((section) => ({ heading: String(section?.heading || "Section").trim().slice(0, 300), text: String(section?.text || "").trim() })).filter((section) => section.text);
   const character_count = sections.reduce((total, section) => total + section.heading.length + section.text.length, 0);
