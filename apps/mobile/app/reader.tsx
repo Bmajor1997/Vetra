@@ -112,7 +112,17 @@ export default function Reader(){
           </Text>
         })}
       </ScrollView>
-      <View style={s.player}>\n        <View style={s.readerTools}><Pressable accessibilityRole="button" accessibilityLabel="Open worksheet workspace" onPress={()=>{void stop();router.push("/worksheet")}} style={({pressed})=>[s.ask,{borderColor:theme.border,backgroundColor:pressed?theme.surfaceMuted:"transparent"}]}><Ionicons name="create-outline" size={20} color={theme.text}/><Text style={[s.askText,{color:theme.text}]}>Worksheet</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel="Ask Votic about this document" onPress={()=>{void stop();router.push("/assistant")}} style={({pressed})=>[s.ask,{borderColor:theme.border,backgroundColor:pressed?theme.surfaceMuted:"transparent"}]}><Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.text}/><Text style={[s.askText,{color:theme.text}]}>Ask Votic</Text></Pressable>
+      <View style={s.player}>
+        <View style={s.readerTools}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open worksheet workspace" onPress={()=>{void stop();router.push("/worksheet")}} style={({pressed})=>[s.ask,{borderColor:theme.border,backgroundColor:pressed?theme.surfaceMuted:"transparent"}]}>
+            <Ionicons name="create-outline" size={20} color={theme.text}/>
+            <Text style={[s.askText,{color:theme.text}]}>Worksheet</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Ask Votic about this document" onPress={()=>{void stop();router.push("/assistant")}} style={({pressed})=>[s.ask,{borderColor:theme.border,backgroundColor:pressed?theme.surfaceMuted:"transparent"}]}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.text}/>
+            <Text style={[s.askText,{color:theme.text}]}>Ask Votic</Text>
+          </Pressable>
+        </View>
         <View style={s.controls}>
           <Pressable disabled={index===0} accessibilityRole="button" accessibilityLabel="Previous passage" onPress={()=>jump(-1)} style={({pressed})=>[s.control,{opacity:index===0 ? .35 : pressed ? .55 : 1}]}><Ionicons name="play-skip-back" size={28} color={index===0?theme.mutedText:theme.text}/></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={playing?"Pause":"Play"} onPress={toggle} style={({pressed})=>[s.play,{backgroundColor:theme.playButton},!accessibility.reduceMotion&&{transform:[{scale:pressed ? .96 : 1}]}]}><Ionicons name={playing?"pause":"play"} size={34} color={theme.playIcon}/></Pressable>
