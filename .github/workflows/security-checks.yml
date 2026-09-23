@@ -37,7 +37,52 @@ jobs:
         run: npm test
 
       - name: Check dependencies for vulnerabilities
-        run: npm audit
+        run: |
+          npm audit --json > npm-audit.json || true
+          node - <<'NODE'
+          const fs = require("fs");
+          const path = "security/vulnerability-report.md";
+          const audit = JSON.parse(fs.readFileSync("npm-audit.json", "utf8"));
+          const vulnerabilities = audit.vulnerabilities || {};
+          const rows = [];
+
+          for (const [name, finding] of Object.entries(vulnerabilities)) {
+            if (!["low", "moderate"].includes(finding.severity)) continue;
+
+            const via = Array.isArray(finding.via) ? finding.via : [];
+            const details = via.find(item => typeof item === "object") || {};
+            const title = details.title || "Dependency vulnerability";
+            const cause = details.url
+              ? `Reported by npm audit. Advisory: ${details.url}`
+              : "Reported by npm audit.";
+            const fix = finding.fixAvailable
+              ? "Review npm audit fix guidance and update the affected dependency."
+              : "Review the advisory and dependency tree; upgrade or replace the dependency when a patched version is available.";
+
+            rows.push(
+              `| ${finding.severity[0].toUpperCase() + finding.severity.slice(1)} | ${title.replaceAll("|", "\\|")} | ${name.replaceAll("|", "\\|")} | ${cause.replaceAll("|", "\\|")} | ${fix.replaceAll("|", "\\|")} | Open |`
+            );
+          }
+
+          const start = "<!-- AUTO-GENERATED-NPM-AUDIT:START -->";
+          const end = "<!-- AUTO-GENERATED-NPM-AUDIT:END -->";
+          const body = rows.length
+            ? rows.join("\n")
+            : "| None | No low or moderate npm dependency vulnerabilities detected | — | — | — | — |";
+
+          let report = fs.readFileSync(path, "utf8");
+          const block = `${start}\n\n## Current npm audit findings\n\n| Severity | Vulnerability / Finding | Affected dependency or code | Cause | Recommended fix | Status |\n| --- | --- | --- | --- | --- | --- |\n${body}\n\n${end}`;
+
+          if (report.includes(start) && report.includes(end)) {
+            report = report.replace(new RegExp(`${start}[\\s\\S]*?${end}`), block);
+          } else {
+            report += `\n\n${block}\n`;
+          }
+
+          fs.writeFileSync(path, report);
+          NODE
+
+          npm audit --audit-level=high
 
       - name: Install Semgrep
         run: pip install semgrep
@@ -50,3 +95,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_VERSION: 8.30.1
+
+      - name: Commit updated vulnerability report
+        if: github.event_name != 'pull_request'
+        run: |
+          if git diff --quiet -- security/vulnerability-report.md; then
+            echo "Vulnerability report is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add security/vulnerability-report.md
+          git commit -m "Update vulnerability report [skip ci]"
+          git push
