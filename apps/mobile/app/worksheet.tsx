@@ -7,7 +7,16 @@ import { useDocumentLibrary } from "../src/documents/DocumentLibraryProvider";
 import { useVoticTheme } from "../src/theme/ThemeProvider";
 
 type Block={id:string;before:string;kind:"answer"|"checkbox";after:string;checked?:boolean};
-function blocks(text:string):Block[]{const lines=text.split(/\r?\n/).filter(v=>v.trim());return lines.flatMap((line,i)=>{const checkbox=line.match(/^\s*[☐□☑☒]\s*(.*)$/);if(checkbox)return[{id:"line-"+i,before:checkbox[1]||"Worksheet item",kind:"checkbox" as const,after:"",checked:/^[\s]*[☑☒]/.test(line)}];const blank=line.match(/^(.*?)(_{5,})(.*)$/);if(blank)return[{id:"line-"+i,before:blank[1].trim(),kind:"answer" as const,after:blank[3].trim()}];return[]})}
+function blocks(text:string):Block[]{
+ const lines=text.split(/\r?\n/).filter(v=>v.trim());
+ return lines.flatMap<Block>((line,i)=>{
+  const checkbox=line.match(/^\s*[☐□☑☒]\s*(.*)$/);
+  if(checkbox)return[{id:"line-"+i,before:checkbox[1]||"Worksheet item",kind:"checkbox",after:"",checked:/^\s*[☑☒]/.test(line)}];
+  const blank=line.match(/^(.*?)(_{5,})(.*)$/);
+  if(blank)return[{id:"line-"+i,before:blank[1].trim(),kind:"answer",after:blank[3].trim()}];
+  return[];
+ });
+}
 export default function Worksheet(){
  const {theme}=useVoticTheme();const {activeDocument,updateWorksheetResponses}=useDocumentLibrary();const controls=useMemo(()=>blocks(activeDocument?.plainText||""),[activeDocument?.plainText]);const [responses,setResponses]=useState<Record<string,string|boolean>>(activeDocument?.worksheetResponses||{});
  function save(next:Record<string,string|boolean>){setResponses(next);if(activeDocument)updateWorksheetResponses(activeDocument.id,next)}
