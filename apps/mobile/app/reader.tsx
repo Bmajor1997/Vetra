@@ -30,11 +30,11 @@ export default function Reader(){
   const [rate,setRate]=useState(activeDocument?.playbackRate||1);
   const [playing,setPlaying]=useState(false);
   const [speedOpen,setSpeedOpen]=useState(false);
-  const scrollRef=useRef<ScrollView>(null);
+  const scrollRef=useRef<ScrollView>(null);\n  const speechSession=useRef(0);
   const sentenceY=useRef<Record<number,number>>({});
   const readingType=readerType(accessibility.textSize,accessibility.readingSpacing);
 
-  useEffect(()=>()=>{Speech.stop()},[]);
+  useEffect(()=>()=>{speechSession.current+=1;Speech.stop()},[]);
   useEffect(()=>{if(!activeDocument||!passages.length)return;updateProgress(activeDocument.id,index/Math.max(1,passages.length),index,wordIndex)},[index,wordIndex]);
   useEffect(()=>{scrollToSentence(index)},[index,accessibility.reduceMotion]);
 
@@ -47,14 +47,25 @@ export default function Reader(){
     sentenceY.current[sentenceIndex]=event.nativeEvent.layout.y;
     if(sentenceIndex===index)scrollToSentence(sentenceIndex);
   }
-  function stop(){Speech.stop();setPlaying(false)}
+  async function stop(){
+    speechSession.current+=1;
+    setPlaying(false);
+    await Speech.stop();
+  }
   function speak(at=index,startWord=at===index?wordIndex:0){
-    if(!activeDocument||!passages[at])return;
-    Speech.stop();
+    const session=speechSession.current+1;
+    speechSession.current=session;
+    void beginSpeech(at,startWord,session,true);
+  }
+  async function beginSpeech(at:number,startWord:number,session:number,clearQueue:boolean){
+    if(!activeDocument||!passages[at]||session!==speechSession.current)return;
+    if(clearQueue)await Speech.stop();
+    if(session!==speechSession.current)return;
     const passage=passages[at];
     const segment=speechSegment(passage,startWord);
     setIndex(at);setWordIndex(segment.startWord);setPlaying(true);
     Speech.speak(segment.text,{rate,onBoundary:(event:any)=>{
+      if(session!==speechSession.current)return;
       if(event?.name&&event.name!=="word")return;
       const relativeOffset=Number(event?.charIndex);
       if(!Number.isFinite(relativeOffset))return;
@@ -62,17 +73,21 @@ export default function Reader(){
       let next=segment.words.findIndex((match,i)=>sourceOffset>=(match.index??0)&&sourceOffset<(segment.words[i+1]?.index??Infinity));
       if(next<0)next=segment.startWord;
       if(next>=0)setWordIndex(next)
-    },onDone:()=>{if(at<passages.length-1)speak(at+1,0);else setPlaying(false)},onStopped:()=>setPlaying(false),onError:()=>setPlaying(false)})
+    },onDone:()=>{
+      if(session!==speechSession.current)return;
+      if(at<passages.length-1)void beginSpeech(at+1,0,session,false);
+      else setPlaying(false)
+    },onStopped:()=>{if(session===speechSession.current)setPlaying(false)},onError:()=>{if(session===speechSession.current)setPlaying(false)}})
   }
-  function toggle(){playing?stop():speak()}
-  function jump(delta:number){stop();setWordIndex(0);setIndex(current=>Math.max(0,Math.min(passages.length-1,current+delta)))}
+  function toggle(){playing?void stop():speak()}
+  function jump(delta:number){void stop();setWordIndex(0);setIndex(current=>Math.max(0,Math.min(passages.length-1,current+delta)))}
   function changeRate(value:number){setRate(value);if(activeDocument)updatePlaybackRate(activeDocument.id,value)}
   const progress=passages.length?Math.min(1,(index+1)/passages.length):0;
 
   return <SafeAreaView style={[s.safe,{backgroundColor:theme.background}]}>
     <View style={s.content}>
       <View style={s.topBar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close reader" onPress={()=>{stop();router.back()}} style={({pressed})=>[s.close,{opacity:pressed ? .55 : 1}]}><Ionicons name="chevron-down" size={27} color={theme.text}/></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close reader" onPress={()=>{void stop();router.back()}} style={({pressed})=>[s.close,{opacity:pressed ? .55 : 1}]}><Ionicons name="chevron-down" size={27} color={theme.text}/></Pressable>
         <VoticLogo compact/>
         <View style={s.topSpacer}/>
       </View>
@@ -102,7 +117,7 @@ export default function Reader(){
           <Pressable accessibilityRole="button" accessibilityLabel={playing?"Pause":"Play"} onPress={toggle} style={({pressed})=>[s.play,{backgroundColor:theme.playButton},!accessibility.reduceMotion&&{transform:[{scale:pressed ? .96 : 1}]}]}><Ionicons name={playing?"pause":"play"} size={34} color={theme.playIcon}/></Pressable>
           <Pressable disabled={!passages.length||index>=passages.length-1} accessibilityRole="button" accessibilityLabel="Next passage" onPress={()=>jump(1)} style={({pressed})=>[s.control,{opacity:index>=passages.length-1 ? .35 : pressed ? .55 : 1}]}><Ionicons name="play-skip-forward" size={28} color={index>=passages.length-1?theme.mutedText:theme.text}/></Pressable>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={"Playback speed "+formatPlaybackRate(rate)} accessibilityHint="Opens compact playback speed controls" onPress={()=>{stop();setSpeedOpen(true)}} style={({pressed})=>[s.speedButton,{backgroundColor:theme.surfaceMuted,opacity:pressed ? .7 : 1}]}><Text style={[s.speed,{color:theme.text}]}>{formatPlaybackRate(rate)}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={"Playback speed "+formatPlaybackRate(rate)} accessibilityHint="Opens compact playback speed controls" onPress={()=>{void stop();setSpeedOpen(true)}} style={({pressed})=>[s.speedButton,{backgroundColor:theme.surfaceMuted,opacity:pressed ? .7 : 1}]}><Text style={[s.speed,{color:theme.text}]}>{formatPlaybackRate(rate)}</Text></Pressable>
       </View>
     </View>
     <Modal visible={speedOpen} transparent animationType={accessibility.reduceMotion?"none":"fade"} onRequestClose={()=>setSpeedOpen(false)}>
