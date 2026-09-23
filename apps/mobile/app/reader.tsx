@@ -72,7 +72,7 @@ export default function Reader(){
   return <SafeAreaView style={[s.safe,{backgroundColor:theme.background}]}>
     <View style={s.content}>
       <View style={s.topBar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close reader" onPress={()=>{stop();router.back()}} style={({pressed})=>[s.close,{opacity:pressed?.55:1}]}><Ionicons name="chevron-down" size={27} color={theme.text}/></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close reader" onPress={()=>{stop();router.back()}} style={({pressed})=>[s.close,{opacity:pressed ? .55 : 1}]}><Ionicons name="chevron-down" size={27} color={theme.text}/></Pressable>
         <VoticLogo compact/>
         <View style={s.topSpacer}/>
       </View>
@@ -98,11 +98,11 @@ export default function Reader(){
       </ScrollView>
       <View style={s.player}>
         <View style={s.controls}>
-          <Pressable disabled={index===0} accessibilityRole="button" accessibilityLabel="Previous passage" onPress={()=>jump(-1)} style={({pressed})=>[s.control,{opacity:index===0?.35:pressed?.55:1}]}><Ionicons name="play-skip-back" size={28} color={index===0?theme.mutedText:theme.text}/></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={playing?"Pause":"Play"} onPress={toggle} style={({pressed})=>[s.play,{backgroundColor:theme.playButton},!accessibility.reduceMotion&&{transform:[{scale:pressed?.96:1}]}]}><Ionicons name={playing?"pause":"play"} size={34} color={theme.playIcon}/></Pressable>
-          <Pressable disabled={!passages.length||index>=passages.length-1} accessibilityRole="button" accessibilityLabel="Next passage" onPress={()=>jump(1)} style={({pressed})=>[s.control,{opacity:index>=passages.length-1?.35:pressed?.55:1}]}><Ionicons name="play-skip-forward" size={28} color={index>=passages.length-1?theme.mutedText:theme.text}/></Pressable>
+          <Pressable disabled={index===0} accessibilityRole="button" accessibilityLabel="Previous passage" onPress={()=>jump(-1)} style={({pressed})=>[s.control,{opacity:index===0 ? .35 : pressed ? .55 : 1}]}><Ionicons name="play-skip-back" size={28} color={index===0?theme.mutedText:theme.text}/></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={playing?"Pause":"Play"} onPress={toggle} style={({pressed})=>[s.play,{backgroundColor:theme.playButton},!accessibility.reduceMotion&&{transform:[{scale:pressed ? .96 : 1}]}]}><Ionicons name={playing?"pause":"play"} size={34} color={theme.playIcon}/></Pressable>
+          <Pressable disabled={!passages.length||index>=passages.length-1} accessibilityRole="button" accessibilityLabel="Next passage" onPress={()=>jump(1)} style={({pressed})=>[s.control,{opacity:index>=passages.length-1 ? .35 : pressed ? .55 : 1}]}><Ionicons name="play-skip-forward" size={28} color={index>=passages.length-1?theme.mutedText:theme.text}/></Pressable>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={"Playback speed "+formatPlaybackRate(rate)} accessibilityHint="Opens compact playback speed controls" onPress={()=>{stop();setSpeedOpen(true)}} style={({pressed})=>[s.speedButton,{backgroundColor:theme.surfaceMuted,opacity:pressed?.7:1}]}><Text style={[s.speed,{color:theme.text}]}>{formatPlaybackRate(rate)}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={"Playback speed "+formatPlaybackRate(rate)} accessibilityHint="Opens compact playback speed controls" onPress={()=>{stop();setSpeedOpen(true)}} style={({pressed})=>[s.speedButton,{backgroundColor:theme.surfaceMuted,opacity:pressed ? .7 : 1}]}><Text style={[s.speed,{color:theme.text}]}>{formatPlaybackRate(rate)}</Text></Pressable>
       </View>
     </View>
     <Modal visible={speedOpen} transparent animationType={accessibility.reduceMotion?"none":"fade"} onRequestClose={()=>setSpeedOpen(false)}>
