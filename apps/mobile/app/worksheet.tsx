@@ -18,7 +18,11 @@ function blocks(text:string):Block[]{
  });
 }
 export default function Worksheet(){
- const {theme}=useVoticTheme();const {activeDocument,updateWorksheetResponses}=useDocumentLibrary();const controls=useMemo(()=>blocks(activeDocument?.plainText||""),[activeDocument?.plainText]);const [responses,setResponses]=useState<Record<string,string|boolean>>(activeDocument?.worksheetResponses||{});\n useEffect(()=>{setResponses(activeDocument?.worksheetResponses||{})},[activeDocument?.id]);
+ const {theme}=useVoticTheme();
+ const {activeDocument,updateWorksheetResponses}=useDocumentLibrary();
+ const controls=useMemo(()=>blocks(activeDocument?.plainText||""),[activeDocument?.plainText]);
+ const [responses,setResponses]=useState<Record<string,string|boolean>>(activeDocument?.worksheetResponses||{});
+ useEffect(()=>{setResponses(activeDocument?.worksheetResponses||{})},[activeDocument?.id]);
  function save(next:Record<string,string|boolean>){setResponses(next);if(activeDocument)updateWorksheetResponses(activeDocument.id,next)}
  return <SafeAreaView style={[s.safe,{backgroundColor:theme.background}]}><View style={[s.header,{borderBottomColor:theme.border}]}><Pressable accessibilityRole="button" accessibilityLabel="Close worksheet" onPress={()=>router.back()} style={s.icon}><Ionicons name="chevron-down" size={27} color={theme.text}/></Pressable><View style={s.headerCopy}><Text style={[s.title,{color:theme.text}]}>Worksheet</Text><Text numberOfLines={1} style={[s.context,{color:theme.mutedText}]}>{activeDocument?.title||"Document"}</Text></View><View style={s.icon}/></View>
  <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">{controls.length===0?<View style={s.empty}><Ionicons name="create-outline" size={30} color={theme.mutedText}/><Text style={[s.heading,{color:theme.text}]}>No worksheet fields found</Text><Text style={[s.body,{color:theme.mutedText}]}>Votic recognizes checkbox symbols and answer blanks made from underscores. This document can still be used in the Reader.</Text></View>:<>
