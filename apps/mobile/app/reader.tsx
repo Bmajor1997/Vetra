@@ -30,7 +30,8 @@ export default function Reader(){
   const [rate,setRate]=useState(activeDocument?.playbackRate||1);
   const [playing,setPlaying]=useState(false);
   const [speedOpen,setSpeedOpen]=useState(false);
-  const scrollRef=useRef<ScrollView>(null);\n  const speechSession=useRef(0);
+  const scrollRef=useRef<ScrollView>(null);
+  const speechSession=useRef(0);
   const sentenceY=useRef<Record<number,number>>({});
   const readingType=readerType(accessibility.textSize,accessibility.readingSpacing);
 
