@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { create_completed_docx, extract_document } from "./app_parts/document_file_tools.js";
+import { extract_document } from "./app_parts/document_file_tools.js";
 import { local_help_answer, VOTIC_HELP_CONTEXT } from "./app_parts/help_answers.js";
 const root = fileURLToPath(new URL(".", import.meta.url));
 const MAX_DOCUMENT_BYTES = 25_000_000;
@@ -156,10 +156,6 @@ function extraction_error_message(error) {
   if (/no selectable text|scanned/i.test(message)) return "Votic could not find selectable text in this PDF. It may be a scanned document; scanned-PDF reading is not supported yet.";
   if (/not a zip|package not found|file is not a zip|eof marker|malformed|invalid pdf/i.test(message)) return "This file appears to be damaged or is not a valid PDF or Word document. Try opening and saving it again, then re-upload it.";
   return message || "Votic could not read this document. Try saving a fresh copy or uploading a TXT version.";
-}
-function export_error_message(error) {
-  const message = String(error?.message || error);
-  return message || "Votic could not create the Word document. Please try the text download instead.";
 }
 async function answer_with_ai(question, { env, fetch_impl, timeout_ms }) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout_ms);
