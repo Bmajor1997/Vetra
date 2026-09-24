@@ -109,3 +109,42 @@ jobs:
           git add security/vulnerability-report.md
           git commit -m "Update vulnerability report [skip ci]"
           git push
+
+  mobile:
+    name: React Native / Expo CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Get Votic's code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install mobile dependencies
+        run: npm install --ignore-scripts
+
+      - name: Type-check React Native code
+        run: npm run typecheck
+
+      - name: Validate Expo configuration
+        run: npx expo config --type public
+
+      - name: Check Expo dependency compatibility
+        run: npx expo install --check
+
+      - name: Install Semgrep for mobile security scanning
+        run: pip install semgrep
+        working-directory: .
+
+      - name: Scan React Native TypeScript with Semgrep
+        run: semgrep scan --config auto apps/mobile --error
+        working-directory: .
+
+      - name: Audit mobile production dependencies
+        run: npm audit --omit=dev --audit-level=high
