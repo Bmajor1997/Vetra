@@ -1,1 +1,2 @@
-export type VoticDocument={id:string;title:string;sourceName:string;plainText:string;importedAt:number;updatedAt:number;progress:number;sentenceIndex:number;wordIndex:number;playbackRate:number;worksheetResponses?:Record<string,string|boolean>};
+export type DailyReadingActivity={readingSeconds:number;listeningSeconds:number};
+export type VoticDocument={id:string;title:string;sourceName:string;plainText:string;importedAt:number;updatedAt:number;lastOpenedAt?:number;completedAt?:number;progress:number;sentenceIndex:number;wordIndex:number;playbackRate:number;activity?:Record<string,DailyReadingActivity>;worksheetResponses?:Record<string,string|boolean>};
