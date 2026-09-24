@@ -79,14 +79,6 @@ export function create_votic_handler(options = {}) {
     finally { active_extractions -= 1; }
     return;
   }
-   if (request.method === "POST" && path === "/api/export-docx") {
-    const payload = await read_json_body(request, 2_000_000, config.body_timeout_ms);
-    if (!Array.isArray(payload.blocks) || !payload.blocks.length) throw new HttpError(400, "The worksheet does not contain anything to export.");
-    const body = await (options.createDocx || create_completed_docx)(payload.title, payload.blocks);
-    set_security_headers(response, { "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "Content-Length": body.length });
-    response.writeHead(200).end(body);
-    return;
-  }
    if (request.method === "POST" && path === "/api/help") {
       rate_limit(`${client}:help`, config.help_rate_limit);
       const { question, document } = await read_json_body(request, 500_000, config.body_timeout_ms);
