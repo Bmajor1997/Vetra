@@ -14,14 +14,31 @@ export function startOfCurrentWeek(now=new Date()){
 }
 
 export function weeklyInsights(documents:VoticDocument[],now=new Date()){
-  const start=startOfCurrentWeek(now);let readingSeconds=0;let listeningSeconds=0;
+  const start=startOfCurrentWeek(now);const end=new Date(start);end.setDate(end.getDate()+7);return periodInsights(documents,start,end);
+}
+
+export function periodInsights(documents:VoticDocument[],start:Date,end:Date){
+  let readingSeconds=0;let listeningSeconds=0;const activeDays=new Set<string>();
   for(const document of documents){
     for(const [day,activity] of Object.entries(document.activity||{})){
-      if(new Date(day+"T00:00:00").getTime()>=start.getTime()){readingSeconds+=activity.readingSeconds||0;listeningSeconds+=activity.listeningSeconds||0;}
+      const time=new Date(day+"T00:00:00").getTime();if(time>=start.getTime()&&time<end.getTime()){readingSeconds+=activity.readingSeconds||0;listeningSeconds+=activity.listeningSeconds||0;if((activity.readingSeconds||0)>0)activeDays.add(day);}
     }
   }
-  const completed=documents.filter(document=>document.completedAt&&document.completedAt>=start.getTime()).length;
-  return {readingMinutes:Math.round(readingSeconds/60),listeningMinutes:Math.round(listeningSeconds/60),completed};
+  const completedDocuments=documents.filter(document=>document.completedAt&&document.completedAt>=start.getTime()&&document.completedAt<end.getTime());
+  const savedPassages=documents.flatMap(document=>(document.savedPassages||[]).filter(passage=>passage.createdAt>=start.getTime()&&passage.createdAt<end.getTime()).map(passage=>({document,passage})));
+  return {readingMinutes:Math.round(readingSeconds/60),listeningMinutes:Math.round(listeningSeconds/60),completed:completedDocuments.length,completedDocuments,saved:savedPassages.length,savedPassages,activeDays:activeDays.size};
+}
+
+export function weeklyComparison(documents:VoticDocument[],now=new Date()){
+  const currentStart=startOfCurrentWeek(now);const previousStart=new Date(currentStart);previousStart.setDate(previousStart.getDate()-7);
+  const currentEnd=new Date(currentStart);currentEnd.setDate(currentEnd.getDate()+7);
+  const current=periodInsights(documents,currentStart,currentEnd);const previous=periodInsights(documents,previousStart,currentStart);
+  const change=previous.readingMinutes?Math.round(((current.readingMinutes-previous.readingMinutes)/previous.readingMinutes)*100):null;
+  return {current,previous,change};
+}
+
+export function recentWeekActivity(documents:VoticDocument[],count=4,now=new Date()){
+  const currentStart=startOfCurrentWeek(now);return Array.from({length:count},(_,offset)=>{const start=new Date(currentStart);start.setDate(start.getDate()-(count-offset-1)*7);const end=new Date(start);end.setDate(end.getDate()+7);return {start,...periodInsights(documents,start,end)};});
 }
 
 export function mostRecentIncomplete(documents:VoticDocument[]){
