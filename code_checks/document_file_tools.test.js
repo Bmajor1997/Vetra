@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow } from "docx";
-import { clean_extracted_text, create_completed_docx, extract_document, html_to_document_text, reconstruct_pdf_page_text } from "../app_parts/document_file_tools.js";
+import { clean_extracted_text, extract_document, html_to_document_text, reconstruct_pdf_page_text } from "../app_parts/document_file_tools.js";
 
 test("preserves headings and table cells from Word conversion", () => {
   const text = html_to_document_text("<h1>Plan</h1><h2>Checks</h2><table><tr><td>☐ Ready</td><td>__________</td></tr></table>");
@@ -48,29 +48,16 @@ test("reconstructs PDF lines by visual position instead of internal object order
   assert.doesNotMatch(text, /^_+\s+(?:Owner|Version):/m);
 });
 
-test("extracts headings, worksheet marks, and table content from a Word document", async () => {
+test("extracts headings, symbols, and table content from a Word document", async () => {
   const source = new Document({ sections: [{ children: [
-    new Paragraph({ text: "Worksheet", heading: HeadingLevel.TITLE }),
+    new Paragraph({ text: "Document", heading: HeadingLevel.TITLE }),
     new Paragraph({ text: "Tasks", heading: HeadingLevel.HEADING_1 }),
     new Table({ rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph("☐ Ready")] }), new TableCell({ children: [new Paragraph("__________")] })] })] }),
   ] }] });
-  const text = await extract_document("worksheet.docx", await Packer.toBuffer(source));
-  assert.match(text, /# Worksheet/);
+  const text = await extract_document("document.docx", await Packer.toBuffer(source));
+  assert.match(text, /# Document/);
   assert.match(text, /## Tasks/);
   assert.match(text, /☐ Ready/);
   assert.match(text, /__________/);
 });
 
-test("creates a valid completed Word worksheet with explicit structure", async () => {
-  const buffer = await create_completed_docx("Completed Plan", [
-    { type: "heading", text: "Tasks" },
-    { type: "paragraph", text: "[x] Approved." },
-    { type: "paragraph", text: "Short answer" },
-  ]);
-  assert.equal(buffer.subarray(0, 2).toString(), "PK");
-  const extracted = await extract_document("completed.docx", buffer);
-  assert.match(extracted, /Completed Plan/);
-  assert.match(extracted, /## Tasks/);
-  assert.match(extracted, /Short answer/);
-  assert.doesNotMatch(extracted, /## Short answer/);
-});
