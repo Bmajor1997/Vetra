@@ -112,7 +112,7 @@ function download_review(parts, suffix) { const body = `${[documentTitle, ...par
 PLAYBACK_RATES.forEach((speed) => { const option = document.createElement("option"); option.value = String(speed); option.textContent = format_playback_rate(speed); el.speedSelect.append(option); }); el.speedSelect.value = String(state.rate);
 restore_preferences(); const restored_document = restore_state(); show_reader(restored_document); if (restored_document) { render_document(); render_sections(); } persistenceReady = true; set_app_view("home"); render_document_library();
 el.trigger.addEventListener("click", () => toggle_panel(true)); el.close.addEventListener("click", () => toggle_panel(false)); el.scrim.addEventListener("click", () => toggle_panel(false));
-function open_document_dialog() { pause_for_choice(); pending_document_text = ""; el.documentFile.value = ""; el.dialog.querySelector('[name="documentMode"][value="reading"]').checked = true; el.selectedFile.textContent = "No document selected"; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.dialog.showModal(); el.dialog.querySelector('[name="documentMode"]:checked').focus(); }
+function open_document_dialog() { pause_for_choice(); pending_document_text = ""; el.documentFile.value = ""; el.selectedFile.textContent = "No document selected"; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.dialog.showModal(); el.documentFile.focus(); }
 document.querySelectorAll("[data-app-view]").forEach((button) => button.addEventListener("click", () => set_app_view(button.dataset.appView)));
 document.querySelectorAll("[data-go-documents]").forEach((button) => button.addEventListener("click", () => set_app_view("documents")));
 el.homeAddDocument.addEventListener("click", open_document_dialog); el.documentsAddDocument.addEventListener("click", open_document_dialog); el.homeOpenSaved.addEventListener("click", open_saved_document);
@@ -135,7 +135,7 @@ el.documentFile.addEventListener("change", async () => {
   } catch (error) { pending_document_text = ""; el.selectedFile.textContent = file.name; el.documentError.textContent = error.message; }
   finally { el.loadDocument.textContent = "Open in reader"; }
 });
-el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(pending_document_text, el.documentFile.files[0]?.name.replace(/\.(txt|md|pdf|docx)$/i, "") || "Untitled document"), el.dialog.querySelector('[name="documentMode"]:checked')?.value));
+el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(pending_document_text, el.documentFile.files[0]?.name.replace(/\.(txt|md|pdf|docx)$/i, "") || "Untitled document")));
 el.highlightTrigger.addEventListener("click", () => { pause_for_choice(); el.highlightDialog.showModal(); (el.highlightDialog.querySelector("[data-highlight-theme]:checked") || el.highlightDialog.querySelector("[data-highlight-theme]")).focus(); announce("Votic color options opened. Playback paused."); });
 el.highlightDialog.addEventListener("click", (event) => { const option = event.target.closest("[data-highlight-theme]"); if (!option) return; apply_highlight_theme(option.dataset.highlightTheme); announce(`${option.textContent.trim()} selected throughout Votic. Playback remains paused.`); });
 el.closeHighlights.addEventListener("click", () => { el.highlightDialog.close(); el.highlightTrigger.focus(); });
