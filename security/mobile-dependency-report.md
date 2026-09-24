@@ -2,7 +2,7 @@
 
 This file is generated automatically by GitHub Actions from `npm audit`.
 
-**Generated:** 2026-09-24T20:48:59.413Z
+**Generated:** 2026-09-24T21:15:53.154Z
 
 ## Summary
 
