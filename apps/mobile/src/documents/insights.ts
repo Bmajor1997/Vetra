@@ -8,6 +8,8 @@ export function estimatedMinutesRemaining(document:VoticDocument){
   return Math.max(remainingWords?1:0,Math.ceil(remainingWords/(WORDS_PER_MINUTE*Math.max(.5,document.playbackRate||1))));
 }
 
+export function documentTimeSpent(document?:VoticDocument|null){return Object.values(document?.activity||{}).reduce((total,activity)=>total+(activity.readingSeconds||0),0);}
+
 export function startOfCurrentWeek(now=new Date()){
   const start=new Date(now);const day=start.getDay();const distance=day===0?6:day-1;
   start.setDate(start.getDate()-distance);start.setHours(0,0,0,0);return start;
