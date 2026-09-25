@@ -128,7 +128,8 @@ export function create_votic_handler(options = {}) {
 export function create_votic_server(options = {}) { return createServer(create_votic_handler(options)); }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
  const port = positive_integer("PORT", 4173);
- create_votic_server().listen(port, () => console.log(`Votic is ready at http://localhost:${port}`));
+ const server_host = process.env.VOTIC_HOST || "0.0.0.0";
+ create_votic_server().listen(port, server_host, () => console.log(`Votic is ready on port ${port} for local and mobile devices`));
 }
 
 async function read_body(request, limit, timeout_ms) {
