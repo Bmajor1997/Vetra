@@ -2,8 +2,12 @@ import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 import { Document, HeadingLevel, Packer, Paragraph } from "docx";
 import JSZip from "jszip";
+import { Document as LegacyOfficeDocument } from "office-oxide";
+import { posix as path_posix } from "node:path";
 
 export async function extract_document(name, buffer) {
+  if (/\.epub$/i.test(name)) return extract_epub(buffer);
+  if (/\.ppt$/i.test(name)) return extract_legacy_powerpoint(buffer);
   if (/\.pptx$/i.test(name)) return extract_powerpoint(buffer);
   if (/\.docx$/i.test(name)) {
     const result = await mammoth.convertToHtml({ buffer }, { styleMap: [
@@ -33,6 +37,56 @@ export async function extract_document(name, buffer) {
     if (!text.trim()) throw new Error("This PDF has no selectable text. Scanned PDFs need OCR, which is not included yet.");
     return clean_extracted_text(text, { removeRepeatedPageArtifacts: true });
   } finally { await parser.destroy(); }
+}
+
+export function extract_legacy_powerpoint(buffer) {
+  const document = LegacyOfficeDocument.fromBytes(new Uint8Array(buffer), "ppt");
+  try {
+    const text = clean_extracted_text(document.toMarkdown());
+    if (!text.trim()) throw new Error("This PowerPoint presentation does not contain readable text.");
+    return text;
+  } finally { document.close(); }
+}
+
+export async function extract_epub(buffer) {
+  const archive = await JSZip.loadAsync(buffer);
+  const container_file = archive.file("META-INF/container.xml");
+  if (!container_file) throw new Error("This EPUB is missing its publication manifest.");
+  const container = await container_file.async("string");
+  const package_path = decode_powerpoint_xml(container.match(/<rootfile\b[^>]*full-path=["']([^"']+)["']/i)?.[1] || "");
+  const package_file = archive.file(package_path);
+  if (!package_path || !package_file) throw new Error("This EPUB is missing its publication package.");
+  const package_xml = await package_file.async("string");
+  const manifest = new Map([...package_xml.matchAll(/<item\b([^>]*)\/?\s*>/gi)].map(([, source]) => {
+    const attributes = xml_attributes(source);
+    return [attributes.id, attributes];
+  }).filter(([id, item]) => id && item.href));
+  const spine = [...package_xml.matchAll(/<itemref\b([^>]*)\/?\s*>/gi)]
+    .map(([, source]) => manifest.get(xml_attributes(source).idref))
+    .filter(Boolean);
+  const reading_order = spine.length ? spine : [...manifest.values()].filter((item) => /(?:xhtml|html)/i.test(item["media-type"] || "") || /\.x?html?$/i.test(item.href));
+  if (reading_order.length > 1000) throw new Error("This EPUB contains too many reading sections.");
+
+  const package_directory = path_posix.dirname(package_path);
+  const sections = [];
+  let extracted_characters = 0;
+  for (const item of reading_order) {
+    const item_path = path_posix.normalize(path_posix.join(package_directory, decode_powerpoint_xml(item.href).split("#", 1)[0]));
+    const content_file = archive.file(item_path);
+    if (!content_file) continue;
+    const text = clean_extracted_text(html_to_document_text(await content_file.async("string")));
+    if (!text) continue;
+    extracted_characters += text.length;
+    if (extracted_characters > 10_000_000) throw new Error("This EPUB expands beyond Votic's current reading limit.");
+    sections.push(text);
+  }
+  const text = clean_extracted_text(sections.join("\n\n"));
+  if (!text.trim()) throw new Error("This EPUB does not contain readable text. It may be image-only or DRM-protected.");
+  return text;
+}
+
+function xml_attributes(source) {
+  return Object.fromEntries([...String(source).matchAll(/([\w:-]+)\s*=\s*["']([^"']*)["']/g)].map((match) => [match[1], decode_powerpoint_xml(match[2])]));
 }
 
 export async function extract_powerpoint(buffer) {

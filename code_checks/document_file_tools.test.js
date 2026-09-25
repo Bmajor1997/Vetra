@@ -75,6 +75,24 @@ test("extracts PowerPoint slides and speaker notes in presentation order", async
   assert.doesNotMatch(text, /Explain the goal\n1/);
 });
 
+test("extracts EPUB chapters in spine order", async () => {
+  const archive = new JSZip();
+  archive.file("META-INF/container.xml", `<?xml version="1.0"?><container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>`);
+  archive.file("OEBPS/content.opf", `<package><manifest><item id="chapter-two" href="two.xhtml" media-type="application/xhtml+xml"/><item media-type="application/xhtml+xml" href="one.xhtml" id="chapter-one"/></manifest><spine><itemref idref="chapter-one"/><itemref idref="chapter-two"/></spine></package>`);
+  archive.file("OEBPS/one.xhtml", `<html><body><h1>Opening</h1><p>First &amp; foremost.</p></body></html>`);
+  archive.file("OEBPS/two.xhtml", `<html><body><h2>Next chapter</h2><p>Continue reading.</p></body></html>`);
+  const text = await extract_document("book.epub", await archive.generateAsync({ type: "nodebuffer" }));
+  assert.match(text, /^# Opening/);
+  assert.match(text, /First & foremost\./);
+  assert.ok(text.indexOf("Opening") < text.indexOf("Next chapter"));
+});
+
+test("rejects EPUB files without a publication manifest", async () => {
+  const archive = new JSZip();
+  archive.file("chapter.xhtml", "<p>Orphaned chapter</p>");
+  await assert.rejects(extract_document("broken.epub", await archive.generateAsync({ type: "nodebuffer" })), /publication manifest/);
+});
+
 test("creates a valid completed Word worksheet with explicit structure", async () => {
   const buffer = await create_completed_docx("Completed Plan", [
     { type: "heading", text: "Tasks" },
