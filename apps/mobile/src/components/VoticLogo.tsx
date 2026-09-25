@@ -1,12 +1,12 @@
 import { Image,StyleSheet,Text,View } from "react-native";
 import { useVoticTheme } from "../theme/ThemeProvider";
 
-export function VoticLogo({compact=false}:{compact?:boolean}){
+export function VoticLogo({compact=false,markOnly=false}:{compact?:boolean;markOnly?:boolean}){
   const {theme}=useVoticTheme();
   const size=compact?28:36;
   return <View accessible accessibilityRole="image" accessibilityLabel="Votic logo" style={s.row}>
     <Image source={require("../../assets/votic-mark.png")} resizeMode="contain" style={{width:size,height:size,marginTop:1}}/>
-    <Text style={[compact?s.compact:s.logo,{color:theme.text}]}>otic</Text>
+    {markOnly?null:<Text style={[compact?s.compact:s.logo,{color:theme.text}]}>otic</Text>}
   </View>;
 }
 
