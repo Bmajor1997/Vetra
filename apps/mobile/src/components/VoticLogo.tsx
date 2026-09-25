@@ -1,3 +1,13 @@
-import { StyleSheet,Text,View } from "react-native";import { useVoticTheme } from "../theme/ThemeProvider";
-export function VoticLogo({compact=false}:{compact?:boolean}){const {theme}=useVoticTheme();const size=compact?22:30;return <View accessible accessibilityRole="image" accessibilityLabel="Votic logo" style={s.row}><View style={[s.mark,{width:size*.82,height:size}]}><View style={[s.left,{borderTopWidth:size*.18,borderRightWidth:size*.11,borderTopColor:theme.isDark?"#FAFAF9":"#292D32",borderRightColor:"transparent"}]}/><View style={[s.wing,{backgroundColor:theme.logoWing,top:size*.18,width:size*.54,height:size*.12}]}/><View style={[s.wing,{backgroundColor:theme.logoWing,top:size*.38,width:size*.45,height:size*.12}]}/><View style={[s.wing,{backgroundColor:theme.logoWing,top:size*.58,width:size*.34,height:size*.12}]}/></View><Text style={[compact?s.compact:s.logo,{color:theme.text}]}>otic</Text></View>}
-const s=StyleSheet.create({row:{flexDirection:"row",alignItems:"center"},mark:{position:"relative",marginRight:1},left:{position:"absolute",left:1,top:1,width:0,height:0,transform:[{rotate:"65deg"}]},wing:{position:"absolute",right:0,borderRadius:999,transform:[{rotate:"-42deg"}]},logo:{fontSize:30,fontWeight:"900",letterSpacing:-1},compact:{fontSize:22,fontWeight:"900",letterSpacing:-.7}});
+import { Image,StyleSheet,Text,View } from "react-native";
+import { useVoticTheme } from "../theme/ThemeProvider";
+
+export function VoticLogo({compact=false}:{compact?:boolean}){
+  const {theme}=useVoticTheme();
+  const size=compact?24:34;
+  return <View accessible accessibilityRole="image" accessibilityLabel="Votic logo" style={s.row}>
+    <Image source={require("../../assets/votic-mark.png")} resizeMode="contain" style={{width:size*1.08,height:size}}/>
+    <Text style={[compact?s.compact:s.logo,{color:theme.text}]}>otic</Text>
+  </View>;
+}
+
+const s=StyleSheet.create({row:{flexDirection:"row",alignItems:"center"},logo:{fontSize:30,fontWeight:"900",letterSpacing:-1.2,marginLeft:-3},compact:{fontSize:22,fontWeight:"900",letterSpacing:-.8,marginLeft:-2}});
