@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow } from "docx";
+import JSZip from "jszip";
 import { clean_extracted_text, create_completed_docx, extract_document, html_to_document_text, reconstruct_pdf_page_text } from "../app_parts/document_file_tools.js";
 
 test("preserves headings and table cells from Word conversion", () => {
@@ -59,6 +60,19 @@ test("extracts headings, worksheet marks, and table content from a Word document
   assert.match(text, /## Tasks/);
   assert.match(text, /☐ Ready/);
   assert.match(text, /__________/);
+});
+
+test("extracts PowerPoint slides and speaker notes in presentation order", async () => {
+  const archive = new JSZip();
+  archive.file("ppt/slides/slide2.xml", `<p:sld xmlns:p="p" xmlns:a="a"><a:p><a:r><a:t>Second slide</a:t></a:r></a:p></p:sld>`);
+  archive.file("ppt/slides/slide1.xml", `<p:sld xmlns:p="p" xmlns:a="a"><a:p><a:r><a:t>Welcome &amp; overview</a:t></a:r></a:p><a:p><a:r><a:t>First point</a:t></a:r></a:p></p:sld>`);
+  archive.file("ppt/notesSlides/notesSlide1.xml", `<p:notes xmlns:p="p" xmlns:a="a"><p:sp><p:nvSpPr><p:nvPr><p:ph type="body"/></p:nvPr></p:nvSpPr><a:p><a:r><a:t>Explain the goal</a:t></a:r></a:p></p:sp><p:sp><p:nvSpPr><p:nvPr><p:ph type="sldNum"/></p:nvPr></p:nvSpPr><a:p><a:r><a:t>1</a:t></a:r></a:p></p:sp></p:notes>`);
+  const text = await extract_document("briefing.pptx", await archive.generateAsync({ type: "nodebuffer" }));
+  assert.match(text, /^# Slide 1/);
+  assert.match(text, /Welcome & overview\nFirst point/);
+  assert.match(text, /Speaker notes:\nExplain the goal/);
+  assert.match(text, /# Slide 2\n\nSecond slide/);
+  assert.doesNotMatch(text, /Explain the goal\n1/);
 });
 
 test("creates a valid completed Word worksheet with explicit structure", async () => {

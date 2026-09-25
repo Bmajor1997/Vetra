@@ -148,8 +148,8 @@ el.documentFile.addEventListener("change", async () => {
   const file = el.documentFile.files[0]; if (!file) return;
   pending_document_text = ""; el.selectedFile.textContent = `${file.name} · Reading…`; el.documentError.textContent = ""; el.loadDocument.disabled = true; el.loadDocument.textContent = "Reading document…";
   try {
-    if (!/\.(txt|md|pdf|docx)$/i.test(file.name)) throw new Error("Choose a TXT, Markdown, PDF, or Word document.");
-    if (/\.(pdf|docx)$/i.test(file.name)) {
+    if (!/\.(txt|md|pdf|docx|pptx)$/i.test(file.name)) throw new Error("Choose a TXT, Markdown, PDF, Word, or PowerPoint document.");
+    if (/\.(pdf|docx|pptx)$/i.test(file.name)) {
       if (file.size > 25_000_000) throw new Error("Document is too large. The current limit is 25 MB.");
       const response = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Votic-Filename": encodeURIComponent(file.name) }, body: file });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || "The document could not be read."); pending_document_text = result.text;
@@ -160,7 +160,7 @@ el.documentFile.addEventListener("change", async () => {
   } catch (error) { pending_document_text = ""; el.selectedFile.textContent = file.name; el.documentError.textContent = error.message; }
   finally { el.loadDocument.textContent = "Open in reader"; }
 });
-el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(pending_document_text, el.documentFile.files[0]?.name.replace(/\.(txt|md|pdf|docx)$/i, "") || "Untitled document"), el.dialog.querySelector('[name="documentMode"]:checked')?.value));
+el.loadDocument.addEventListener("click", () => load_parsed_document(parse_document_text(pending_document_text, el.documentFile.files[0]?.name.replace(/\.(txt|md|pdf|docx|pptx)$/i, "") || "Untitled document"), el.dialog.querySelector('[name="documentMode"]:checked')?.value));
 el.document.addEventListener("click", (event) => { const checkbox = event.target.closest(".worksheet-checkbox"); if (!checkbox) return; pause_for_choice(); const checked = checkbox.getAttribute("aria-pressed") !== "true"; worksheet_responses[checkbox.dataset.worksheetControl] = checked; checkbox.setAttribute("aria-pressed", String(checked)); checkbox.setAttribute("aria-label", `${checked ? "Uncheck" : "Check"} this worksheet item`); checkbox.textContent = checked ? "☑" : "☐"; persist_state(); });
 el.document.addEventListener("input", (event) => { const answer = event.target.closest(".worksheet-answer"); if (!answer) return; pause_for_choice(); worksheet_responses[answer.dataset.worksheetControl] = answer.value; persist_state(); });
 el.downloadWorksheet.addEventListener("click", () => { pause_for_choice(); const body = `${documentTitle}\n\n${build_worksheet_export(doc, worksheet_responses)}\n`; const url = URL.createObjectURL(new Blob([body], { type: "text/plain;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = `${documentTitle.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "votic"}-completed.txt`; link.click(); URL.revokeObjectURL(url); announce("Completed worksheet downloaded."); });

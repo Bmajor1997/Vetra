@@ -1,8 +1,10 @@
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 import { Document, HeadingLevel, Packer, Paragraph } from "docx";
+import JSZip from "jszip";
 
 export async function extract_document(name, buffer) {
+  if (/\.pptx$/i.test(name)) return extract_powerpoint(buffer);
   if (/\.docx$/i.test(name)) {
     const result = await mammoth.convertToHtml({ buffer }, { styleMap: [
       "p[style-name='Title'] => h1:fresh",
@@ -31,6 +33,53 @@ export async function extract_document(name, buffer) {
     if (!text.trim()) throw new Error("This PDF has no selectable text. Scanned PDFs need OCR, which is not included yet.");
     return clean_extracted_text(text, { removeRepeatedPageArtifacts: true });
   } finally { await parser.destroy(); }
+}
+
+export async function extract_powerpoint(buffer) {
+  const archive = await JSZip.loadAsync(buffer);
+  const slides = Object.keys(archive.files)
+    .map((path) => ({ path, number: Number(path.match(/^ppt\/slides\/slide(\d+)\.xml$/)?.[1]) }))
+    .filter(({ number }) => Number.isInteger(number))
+    .sort((left, right) => left.number - right.number);
+  if (!slides.length) throw new Error("This PowerPoint presentation does not contain readable slides.");
+
+  const sections = [];
+  for (const slide of slides) {
+    const slide_text = powerpoint_xml_text(await archive.file(slide.path).async("string"));
+    const notes_path = `ppt/notesSlides/notesSlide${slide.number}.xml`;
+    const notes_file = archive.file(notes_path);
+    const notes_text = notes_file ? powerpoint_xml_text(await notes_file.async("string"), { notes: true }) : "";
+    const content = [slide_text, notes_text && `Speaker notes:\n${notes_text}`].filter(Boolean).join("\n\n");
+    if (content) sections.push(`# Slide ${slide.number}\n\n${content}`);
+  }
+  const text = clean_extracted_text(sections.join("\n\n"));
+  if (!text.trim()) throw new Error("This PowerPoint presentation does not contain readable text.");
+  return text;
+}
+
+export function powerpoint_xml_text(xml, { notes = false } = {}) {
+  let source = String(xml || "");
+  if (notes) {
+    const note_shapes = [...source.matchAll(/<p:sp\b[\s\S]*?<\/p:sp>/gi)]
+      .map(([shape]) => shape)
+      .filter((shape) => !/<p:ph\b[^>]*type="(?:sldNum|dt|hdr|ftr)"/i.test(shape));
+    source = note_shapes.join("");
+  }
+  return [...source.matchAll(/<a:p\b[\s\S]*?<\/a:p>/gi)]
+    .map(([paragraph]) => [...paragraph.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/gi)]
+      .map((match) => decode_powerpoint_xml(match[1]))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+function decode_powerpoint_xml(text) {
+  return String(text)
+    .replace(/&#x([0-9a-f]+);/gi, (_match, value) => String.fromCodePoint(parseInt(value, 16)))
+    .replace(/&#(\d+);/g, (_match, value) => String.fromCodePoint(Number(value)))
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 }
 
 export function reconstruct_pdf_page_text(items) {

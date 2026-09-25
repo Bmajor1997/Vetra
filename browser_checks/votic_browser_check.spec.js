@@ -11,7 +11,7 @@ test("opens with a focused empty state and personalization", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Turn a document into a listening experience." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sections" })).toBeHidden();
   await expect(page.getByRole("button", { name: "Play" })).toBeHidden();
-  await expect(page.getByText("Supports PDF, Word (.docx), TXT, and Markdown files", { exact: true })).toBeVisible();
+  await expect(page.getByText("Supports PDF, Word (.docx), PowerPoint (.pptx), TXT, and Markdown files", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Personalize color" }).click();
   await page.getByRole("radio", { name: "Blue" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-highlight-theme", "blue");
