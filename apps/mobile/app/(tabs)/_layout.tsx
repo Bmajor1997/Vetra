@@ -24,7 +24,8 @@ export default function TabLayout(){
   }}>
     <Tabs.Screen name="index" options={{title:"Home",tabBarAccessibilityLabel:"Home",tabBarIcon:({color,size,focused})=><Ionicons name={focused?"home":"home-outline"} color={color} size={size}/>}}/>
     <Tabs.Screen name="documents" options={{title:"Documents",tabBarAccessibilityLabel:"Documents",tabBarIcon:({color,size,focused})=><Ionicons name={focused?"documents":"documents-outline"} color={color} size={size}/>}}/>
-    <Tabs.Screen name="notes" options={{title:"Notes",tabBarAccessibilityLabel:"Notes",tabBarIcon:({color,size,focused})=><Ionicons name={focused?"bookmarks":"bookmarks-outline"} color={color} size={size}/>}}/>
+    <Tabs.Screen name="ask" options={{title:"Ask Votic",tabBarAccessibilityLabel:"Ask Votic",tabBarIcon:({color,size,focused})=><Ionicons name={focused?"chatbubble-ellipses":"chatbubble-ellipses-outline"} color={color} size={size}/>}}/>
+    <Tabs.Screen name="notes" options={{href:null}}/>
     <Tabs.Screen name="settings" options={{title:"Settings",tabBarAccessibilityLabel:"Settings",tabBarIcon:({color,size,focused})=><Ionicons name={focused?"settings":"settings-outline"} color={color} size={size}/>}}/>
   </Tabs>;
 }
