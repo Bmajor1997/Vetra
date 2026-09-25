@@ -1,148 +1,180 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Speech from "expo-speech";
-import { useEffect,useMemo,useRef,useState } from "react";
-import { LayoutChangeEvent,Modal,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View } from "react-native";
-import { useAccessibilityPreferences } from "../src/accessibility/AccessibilityProvider";
+import { ReactNode,useEffect,useMemo,useRef,useState } from "react";
+import { KeyboardAvoidingView,LayoutChangeEvent,Modal,Platform,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,TextStyle,View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { HighlightMode,ReaderFont,ReadingSpacing,TextSize,useAccessibilityPreferences } from "../src/accessibility/AccessibilityProvider";
 import { PlaybackSpeedControl } from "../src/components/PlaybackSpeedControl";
 import { VoticLogo } from "../src/components/VoticLogo";
 import { controlSizes,radii,spacing,typography } from "../src/design/tokens";
 import { useDocumentLibrary } from "../src/documents/DocumentLibraryProvider";
+import { documentTimeSpent } from "../src/documents/insights";
 import { formatPlaybackRate } from "../src/playback/rates";
-import { useVoticTheme } from "../src/theme/ThemeProvider";
+import { AppearanceMode,useVoticTheme } from "../src/theme/ThemeProvider";
 
-function sentences(text:string){return text.match(/[^.!?]+[.!?]+[\]"')]*|[^.!?]+$/g)?.map(v=>v.trim()).filter(Boolean)||[]}
-function wordMatches(text:string){return [...text.matchAll(/\S+/g)]}
-function speechSegment(text:string,startWord:number){const words=wordMatches(text);const safe=Math.max(0,Math.min(startWord,Math.max(0,words.length-1)));const start=words[safe]?.index??0;return {text:text.slice(start),startChar:start,startWord:safe,words}}
-function readerType(textSize:"default"|"large"|"extra-large",readingSpacing:"default"|"extra"){
-  const fontSize=textSize==="extra-large"?24:textSize==="large"?21:18;
-  const lineHeight=Math.round(fontSize*(readingSpacing==="extra"?1.85:1.65));
-  return {fontSize,lineHeight};
+type ReaderSheet="appearance"|"focus"|"listen"|null;
+type Voice=Awaited<ReturnType<typeof Speech.getAvailableVoicesAsync>>[number];
+
+function sentences(text:string){return text.match(/[^.!?]+[.!?]+[\]"')]*|[^.!?]+$/g)?.map(value=>value.trim()).filter(Boolean)||[];}
+function wordMatches(text:string){return [...text.matchAll(/\S+/g)];}
+function speechSegment(text:string,startWord:number){const words=wordMatches(text);const safe=Math.max(0,Math.min(startWord,Math.max(0,words.length-1)));const start=words[safe]?.index??0;return {text:text.slice(start),startChar:start,startWord:safe,words};}
+function timeSpentLabel(seconds:number){if(seconds<30)return "<1 min";const minutes=Math.round(seconds/60);if(minutes<60)return `${minutes} min`;const hours=Math.floor(minutes/60);const remainder=minutes%60;return remainder?`${hours} hr ${remainder} min`:`${hours} hr`;}
+function readerType(textSize:TextSize,readingSpacing:ReadingSpacing,readerFont:ReaderFont,textSpacing:"default"|"wide"):TextStyle{
+  const fontSize=textSize==="extra-large"?25:textSize==="large"?21:18;
+  const lineScale=readingSpacing==="extra"?1.9:readingSpacing==="compact"?1.42:1.65;
+  return {fontSize,lineHeight:Math.round(fontSize*lineScale),letterSpacing:textSpacing==="wide"?.75:0,fontFamily:readerFont==="serif"?"serif":readerFont==="accessible"?"sans-serif":undefined};
 }
 
+function Choice<T extends string>({label,value,current,onChange}:{label:string;value:T;current:T;onChange:(value:T)=>void}){
+  const {theme}=useVoticTheme();const selected=value===current;
+  return <Pressable accessibilityRole="radio" accessibilityState={{checked:selected}} onPress={()=>onChange(value)} style={({pressed})=>[s.choice,{borderColor:selected?theme.accent:theme.border,backgroundColor:selected?theme.sentenceHighlight:theme.surface,opacity:pressed?.7:1}]}><Text style={[s.choiceText,{color:selected?theme.accent:theme.text}]}>{label}</Text></Pressable>;
+}
+
+function Setting({label,children}:{label:string;children:ReactNode}){const {theme}=useVoticTheme();return <View style={s.setting}><Text style={[s.settingLabel,{color:theme.mutedText}]}>{label}</Text><View style={s.choiceRow}>{children}</View></View>;}
+
 export default function Reader(){
-  const {theme}=useVoticTheme();
+  const {theme,appearanceMode,setAppearanceMode}=useVoticTheme();
   const accessibility=useAccessibilityPreferences();
-  const {activeDocument,updateProgress,updatePlaybackRate}=useDocumentLibrary();
+  const {activeDocument,savePassage,removePassage,updateProgress,recordActivity,completeDocument,updatePlaybackRate}=useDocumentLibrary();
   const passages=useMemo(()=>sentences(activeDocument?.plainText||""),[activeDocument?.plainText]);
   const [index,setIndex]=useState(activeDocument?.sentenceIndex||0);
   const [wordIndex,setWordIndex]=useState(activeDocument?.wordIndex||0);
   const [rate,setRate]=useState(activeDocument?.playbackRate||1);
   const [playing,setPlaying]=useState(false);
-  const [speedOpen,setSpeedOpen]=useState(false);
+  const [sheet,setSheet]=useState<ReaderSheet>(null);
+  const [completionOpen,setCompletionOpen]=useState(false);
+  const [saveOpen,setSaveOpen]=useState(false);
+  const [noteDraft,setNoteDraft]=useState("");
+  const [voices,setVoices]=useState<Voice[]>([]);
   const scrollRef=useRef<ScrollView>(null);
   const speechSession=useRef(0);
   const sentenceY=useRef<Record<number,number>>({});
-  const readingType=readerType(accessibility.textSize,accessibility.readingSpacing);
+  const completedRef=useRef(activeDocument?.progress===1);
+  const readingType=readerType(accessibility.textSize,accessibility.readingSpacing,accessibility.readerFont,accessibility.textSpacing);
 
-  useEffect(()=>()=>{speechSession.current+=1;Speech.stop()},[]);
-  useEffect(()=>{if(!activeDocument||!passages.length)return;updateProgress(activeDocument.id,index/Math.max(1,passages.length),index,wordIndex)},[index,wordIndex]);
-  useEffect(()=>{scrollToSentence(index)},[index,accessibility.reduceMotion]);
+  useEffect(()=>{void Speech.getAvailableVoicesAsync().then(available=>setVoices(available.filter(voice=>voice.language.toLowerCase().startsWith("en")).slice(0,8))).catch(()=>setVoices([]));},[]);
+  useEffect(()=>()=>{speechSession.current+=1;void Speech.stop();},[]);
+  useEffect(()=>{if(!activeDocument||!passages.length||completedRef.current)return;updateProgress(activeDocument.id,index/Math.max(1,passages.length),index,wordIndex);},[index,wordIndex]);
+  useEffect(()=>{scrollToSentence(index);},[index,accessibility.reduceMotion]);
+  useEffect(()=>{if(!activeDocument)return;let lastSavedAt=Date.now();function saveElapsed(){if(!activeDocument)return;const seconds=Math.floor((Date.now()-lastSavedAt)/1000);if(seconds<1)return;lastSavedAt+=seconds*1000;recordActivity(activeDocument.id,seconds,playing?seconds:0);}const interval=setInterval(saveElapsed,10000);return()=>{clearInterval(interval);saveElapsed();};},[activeDocument?.id,playing]);
 
-  function scrollToSentence(sentenceIndex:number){
-    const y=sentenceY.current[sentenceIndex];
-    if(y===undefined)return;
-    scrollRef.current?.scrollTo({y:Math.max(0,y-72),animated:!accessibility.reduceMotion});
-  }
-  function measureSentence(sentenceIndex:number,event:LayoutChangeEvent){
-    sentenceY.current[sentenceIndex]=event.nativeEvent.layout.y;
-    if(sentenceIndex===index)scrollToSentence(sentenceIndex);
-  }
-  async function stop(){
-    speechSession.current+=1;
-    setPlaying(false);
-    await Speech.stop();
-  }
-  function speak(at=index,startWord=at===index?wordIndex:0){
-    const session=speechSession.current+1;
-    speechSession.current=session;
-    void beginSpeech(at,startWord,session,true);
-  }
+  function scrollToSentence(sentenceIndex:number){const y=sentenceY.current[sentenceIndex];if(y===undefined)return;scrollRef.current?.scrollTo({y:Math.max(0,y-72),animated:!accessibility.reduceMotion});}
+  function measureSentence(sentenceIndex:number,event:LayoutChangeEvent){sentenceY.current[sentenceIndex]=event.nativeEvent.layout.y;if(sentenceIndex===index)scrollToSentence(sentenceIndex);}
+  async function stop(){speechSession.current+=1;setPlaying(false);await Speech.stop();}
+  function speak(at=index,startWord=at===index?wordIndex:0){const session=speechSession.current+1;speechSession.current=session;void beginSpeech(at,startWord,session,true);}
   async function beginSpeech(at:number,startWord:number,session:number,clearQueue:boolean){
     if(!activeDocument||!passages[at]||session!==speechSession.current)return;
-    if(clearQueue)await Speech.stop();
-    if(session!==speechSession.current)return;
-    const passage=passages[at];
-    const segment=speechSegment(passage,startWord);
-    setIndex(at);setWordIndex(segment.startWord);setPlaying(true);
-    Speech.speak(segment.text,{rate,onBoundary:(event:any)=>{
-      if(session!==speechSession.current)return;
-      if(event?.name&&event.name!=="word")return;
-      const relativeOffset=Number(event?.charIndex);
-      if(!Number.isFinite(relativeOffset))return;
-      const sourceOffset=segment.startChar+relativeOffset;
-      let next=segment.words.findIndex((match,i)=>sourceOffset>=(match.index??0)&&sourceOffset<(segment.words[i+1]?.index??Infinity));
-      if(next<0)next=segment.startWord;
-      if(next>=0)setWordIndex(next)
-    },onDone:()=>{
-      if(session!==speechSession.current)return;
-      if(at<passages.length-1)void beginSpeech(at+1,0,session,false);
-      else setPlaying(false)
-    },onStopped:()=>{if(session===speechSession.current)setPlaying(false)},onError:()=>{if(session===speechSession.current)setPlaying(false)}})
+    if(clearQueue)await Speech.stop();if(session!==speechSession.current)return;
+    const passage=passages[at];const segment=speechSegment(passage,startWord);setIndex(at);setWordIndex(segment.startWord);setPlaying(true);
+    Speech.speak(segment.text,{rate,voice:accessibility.voiceIdentifier||undefined,onBoundary:(event:any)=>{if(session!==speechSession.current||event?.name&&event.name!=="word")return;const relativeOffset=Number(event?.charIndex);if(!Number.isFinite(relativeOffset))return;const sourceOffset=segment.startChar+relativeOffset;let next=segment.words.findIndex((match,i)=>sourceOffset>=(match.index??0)&&sourceOffset<(segment.words[i+1]?.index??Infinity));if(next<0)next=segment.startWord;if(next>=0)setWordIndex(next);},onDone:()=>{if(session!==speechSession.current)return;if(at<passages.length-1)void beginSpeech(at+1,0,session,false);else finishDocument(false);},onStopped:()=>{if(session===speechSession.current)setPlaying(false);},onError:()=>{if(session===speechSession.current)setPlaying(false);}});
   }
-  function toggle(){playing?void stop():speak()}
-  function jump(delta:number){void stop();setWordIndex(0);setIndex(current=>Math.max(0,Math.min(passages.length-1,current+delta)))}
-  function changeRate(value:number){setRate(value);if(activeDocument)updatePlaybackRate(activeDocument.id,value)}
+  function toggle(){playing?void stop():speak();}
+  function jump(delta:number){void stop();setWordIndex(0);setIndex(current=>Math.max(0,Math.min(passages.length-1,current+delta)));}
+  function changeRate(value:number){setRate(value);if(activeDocument)updatePlaybackRate(activeDocument.id,value);}
+  function openSheet(next:Exclude<ReaderSheet,null>){setSheet(next);}
+  function finishDocument(stopSpeech=true){if(!activeDocument||!passages.length)return;if(stopSpeech)void stop();const finalIndex=passages.length-1;const finalWord=Math.max(0,wordMatches(passages[finalIndex]).length-1);completedRef.current=true;setPlaying(false);setIndex(finalIndex);setWordIndex(finalWord);completeDocument(activeDocument.id,finalIndex,finalWord);setCompletionOpen(true);}
   const progress=passages.length?Math.min(1,(index+1)/passages.length):0;
+  const sentenceHighlight=accessibility.highlightMode==="sentence"||accessibility.highlightMode==="both";
+  const wordHighlight=accessibility.highlightMode==="word"||accessibility.highlightMode==="both";
+  const passageId="passage-"+index;
+  const savedPassage=activeDocument?.savedPassages?.find(saved=>saved.id===passageId);
+  function openSavePassage(){void stop();setNoteDraft(savedPassage?.note||"");setSaveOpen(true);}
+  function confirmSavePassage(){if(!activeDocument||!passages[index])return;const now=Date.now();savePassage(activeDocument.id,{id:passageId,sentenceIndex:index,text:passages[index],note:noteDraft.trim(),createdAt:savedPassage?.createdAt||now,updatedAt:now});setSaveOpen(false);}
+  function confirmRemovePassage(){if(!activeDocument||!savedPassage)return;removePassage(activeDocument.id,savedPassage.id);setSaveOpen(false);}
 
-  return <SafeAreaView style={[s.safe,{backgroundColor:theme.background}]}>
+  return <SafeAreaView edges={["top","bottom","left","right"]} style={[s.safe,{backgroundColor:theme.background}]}>
     <View style={s.content}>
       <View style={s.topBar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close reader" onPress={()=>{void stop();router.back()}} style={({pressed})=>[s.close,{opacity:pressed ? .55 : 1}]}><Ionicons name="chevron-down" size={27} color={theme.text}/></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close reader" onPress={()=>{void stop();router.back();}} style={({pressed})=>[s.iconButton,{opacity:pressed?.55:1}]}><Ionicons name="chevron-down" size={27} color={theme.text}/></Pressable>
         <VoticLogo compact/>
-        <View style={s.topSpacer}/>
+        <View style={s.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={savedPassage?"Edit saved passage":"Save current passage"} accessibilityState={{selected:Boolean(savedPassage)}} onPress={openSavePassage} style={({pressed})=>[s.iconButton,{opacity:pressed?.55:1}]}><Ionicons name={savedPassage?"bookmark":"bookmark-outline"} size={22} color={savedPassage?theme.accent:theme.text}/></Pressable></View>
       </View>
       <View style={s.documentHeader}>
         <Text numberOfLines={2} style={[s.title,{color:theme.text}]}>{activeDocument?.title||"Document reader"}</Text>
+        <View style={s.progressCopy}><Text style={[s.progressText,{color:theme.mutedText}]}>{Math.round(progress*100)}% read</Text><Text style={[s.progressText,{color:theme.mutedText}]}>{Math.max(0,passages.length-index-1)} passages left</Text></View>
         <View accessibilityRole="progressbar" accessibilityValue={{min:0,max:100,now:Math.round(progress*100)}} style={[s.track,{backgroundColor:theme.border}]}><View style={[s.fill,{backgroundColor:theme.accent,width:`${progress*100}%` as `${number}%`}]}/></View>
       </View>
       <ScrollView ref={scrollRef} style={s.textArea} contentContainerStyle={s.readingContent}>
-        {passages.map((passage,passageIndex)=>{
-          const current=passageIndex===index;
-          const tokens=current?passage.split(/(\s+)/):[];
-          return <Text key={passageIndex} onLayout={event=>measureSentence(passageIndex,event)} style={[s.sentence,readingType,{color:theme.text},current&&{backgroundColor:theme.sentenceHighlight}]}>
-            {current?tokens.map((token,tokenIndex)=>{
-              if(/^\s+$/.test(token))return token;
-              const before=tokens.slice(0,tokenIndex).join("");
-              const spokenIndex=before.match(/\S+/g)?.length||0;
-              const active=spokenIndex===wordIndex;
-              const emphasis=active&&accessibility.wordEmphasis;
-              return <Text key={tokenIndex} style={active?[{backgroundColor:theme.wordHighlight},emphasis&&{fontWeight:"800",fontSize:readingType.fontSize+2}]:undefined}>{token}</Text>
-            }):passage}
-          </Text>
-        })}
+        {passages.map((passage,passageIndex)=>{const current=passageIndex===index;const tokens=current?passage.split(/(\s+)/):[];return <Text key={passageIndex} onLayout={event=>measureSentence(passageIndex,event)} style={[s.sentence,readingType,{color:theme.text},current&&sentenceHighlight&&{backgroundColor:theme.sentenceHighlight}]}>{current?tokens.map((token,tokenIndex)=>{if(/^\s+$/.test(token))return token;const before=tokens.slice(0,tokenIndex).join("");const spokenIndex=before.match(/\S+/g)?.length||0;const active=spokenIndex===wordIndex;return <Text key={tokenIndex} style={active&&wordHighlight?[{backgroundColor:theme.wordHighlight},accessibility.wordEmphasis&&{fontWeight:"800",fontSize:(readingType.fontSize as number)+2}]:undefined}>{token}</Text>;}):passage}</Text>;})}
       </ScrollView>
-      <View style={s.player}>
-        <View style={s.readerTools}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open worksheet workspace" onPress={()=>{void stop();router.push("/worksheet")}} style={({pressed})=>[s.ask,{borderColor:theme.border,backgroundColor:pressed?theme.surfaceMuted:"transparent"}]}>
-            <Ionicons name="create-outline" size={20} color={theme.text}/>
-            <Text style={[s.askText,{color:theme.text}]}>Worksheet</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Ask Votic about this document" onPress={()=>{void stop();router.push("/assistant")}} style={({pressed})=>[s.ask,{borderColor:theme.border,backgroundColor:pressed?theme.surfaceMuted:"transparent"}]}>
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.text}/>
-            <Text style={[s.askText,{color:theme.text}]}>Ask Votic</Text>
-          </Pressable>
-        </View>
+
+      <Pressable accessibilityRole="button" accessibilityLabel="Ask Votic about this document" onPress={()=>{void stop();router.push("/assistant");}} style={({pressed})=>[s.ask,{backgroundColor:theme.accent,opacity:pressed?.8:1}]}><Ionicons name="chatbubble-ellipses" size={20} color="#FFF"/><Text style={s.askText}>Ask Votic</Text></Pressable>
+
+      <View style={[s.dock,{borderColor:theme.border,backgroundColor:theme.surface}]}>
         <View style={s.controls}>
-          <Pressable disabled={index===0} accessibilityRole="button" accessibilityLabel="Previous passage" onPress={()=>jump(-1)} style={({pressed})=>[s.control,{opacity:index===0 ? .35 : pressed ? .55 : 1}]}><Ionicons name="play-skip-back" size={28} color={index===0?theme.mutedText:theme.text}/></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={playing?"Pause":"Play"} onPress={toggle} style={({pressed})=>[s.play,{backgroundColor:theme.playButton},!accessibility.reduceMotion&&{transform:[{scale:pressed ? .96 : 1}]}]}><Ionicons name={playing?"pause":"play"} size={34} color={theme.playIcon}/></Pressable>
-          <Pressable disabled={!passages.length||index>=passages.length-1} accessibilityRole="button" accessibilityLabel="Next passage" onPress={()=>jump(1)} style={({pressed})=>[s.control,{opacity:index>=passages.length-1 ? .35 : pressed ? .55 : 1}]}><Ionicons name="play-skip-forward" size={28} color={index>=passages.length-1?theme.mutedText:theme.text}/></Pressable>
+          <Pressable disabled={index===0} accessibilityRole="button" accessibilityLabel="Previous passage" onPress={()=>jump(-1)} style={({pressed})=>[s.control,{opacity:index===0?.3:pressed?.55:1}]}><Ionicons name="play-skip-back" size={25} color={index===0?theme.mutedText:theme.text}/></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={playing?"Pause":"Play"} onPress={toggle} style={({pressed})=>[s.play,{backgroundColor:theme.playButton},!accessibility.reduceMotion&&{transform:[{scale:pressed?.96:1}]}]}><Ionicons name={playing?"pause":"play"} size={30} color={theme.playIcon}/></Pressable>
+          <Pressable disabled={!passages.length} accessibilityRole="button" accessibilityLabel={index>=passages.length-1?"Finish document":"Next passage"} onPress={()=>index>=passages.length-1?finishDocument():jump(1)} style={({pressed})=>[s.control,{opacity:!passages.length?.3:pressed?.55:1}]}><Ionicons name={index>=passages.length-1?"checkmark":"play-skip-forward"} size={index>=passages.length-1?29:25} color={theme.text}/></Pressable>
+          <Text style={[s.nowPlaying,{color:theme.mutedText}]} numberOfLines={1}>{playing?"Listening":"Ready"} · {formatPlaybackRate(rate)}</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={"Playback speed "+formatPlaybackRate(rate)} accessibilityHint="Opens compact playback speed controls" onPress={()=>{void stop();setSpeedOpen(true)}} style={({pressed})=>[s.speedButton,{backgroundColor:theme.surfaceMuted,opacity:pressed ? .7 : 1}]}><Text style={[s.speed,{color:theme.text}]}>{formatPlaybackRate(rate)}</Text></Pressable>
+        <View style={[s.toolRow,{borderTopColor:theme.border}]}>
+          <ToolButton icon="text-outline" label="Appearance" active={sheet==="appearance"} onPress={()=>openSheet("appearance")}/>
+          <ToolButton icon="eye-outline" label="Focus" active={sheet==="focus"} onPress={()=>openSheet("focus")}/>
+          <ToolButton icon="volume-high-outline" label="Listen" active={sheet==="listen"} onPress={()=>openSheet("listen")}/>
+        </View>
       </View>
     </View>
-    <Modal visible={speedOpen} transparent animationType={accessibility.reduceMotion?"none":"fade"} onRequestClose={()=>setSpeedOpen(false)}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close playback speed controls" onPress={()=>setSpeedOpen(false)} style={s.modalBackdrop}>
+
+    <Modal visible={sheet!==null} transparent animationType={accessibility.reduceMotion?"none":"slide"} onRequestClose={()=>setSheet(null)}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Close reader controls" onPress={()=>setSheet(null)} style={s.modalBackdrop}>
         <Pressable accessibilityRole="none" onPress={event=>event.stopPropagation()} style={[s.sheet,{backgroundColor:theme.surface}]}>
           <View style={[s.handle,{backgroundColor:theme.border}]}/>
-          <View style={s.sheetHeader}><Text accessibilityRole="header" style={[s.sheetTitle,{color:theme.text}]}>Playback speed</Text><Pressable accessibilityRole="button" accessibilityLabel="Close playback speed controls" onPress={()=>setSpeedOpen(false)} style={s.sheetClose}><Ionicons name="close" size={24} color={theme.text}/></Pressable></View>
-          <PlaybackSpeedControl rate={rate} onChange={changeRate}/>
+          <View style={s.sheetHeader}><View><Text accessibilityRole="header" style={[s.sheetTitle,{color:theme.text}]}>{sheet==="appearance"?"Appearance":sheet==="focus"?"Reading focus":"Listen"}</Text><Text style={[s.sheetSubtitle,{color:theme.mutedText}]}>{sheet==="appearance"?"Changes appear in the document immediately.":sheet==="focus"?"Choose the guidance that helps you track the text.":"Choose a voice and comfortable listening speed."}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close reader controls" onPress={()=>setSheet(null)} style={s.iconButton}><Ionicons name="close" size={24} color={theme.text}/></Pressable></View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.sheetContent}>
+            {sheet==="appearance"?<>
+              <Setting label="Text size"><Choice label="A" value="default" current={accessibility.textSize} onChange={accessibility.setTextSize}/><Choice label="A+" value="large" current={accessibility.textSize} onChange={accessibility.setTextSize}/><Choice label="A++" value="extra-large" current={accessibility.textSize} onChange={accessibility.setTextSize}/></Setting>
+              <Setting label="Font"><Choice label="Votic Sans" value="system" current={accessibility.readerFont} onChange={accessibility.setReaderFont}/><Choice label="Serif" value="serif" current={accessibility.readerFont} onChange={accessibility.setReaderFont}/><Choice label="Accessible" value="accessible" current={accessibility.readerFont} onChange={accessibility.setReaderFont}/></Setting>
+              <Setting label="Theme"><Choice label="Light" value="light" current={appearanceMode} onChange={(value:AppearanceMode)=>setAppearanceMode(value)}/><Choice label="Dark" value="dark" current={appearanceMode} onChange={(value:AppearanceMode)=>setAppearanceMode(value)}/><Choice label="Device" value="system" current={appearanceMode} onChange={(value:AppearanceMode)=>setAppearanceMode(value)}/></Setting>
+              <Setting label="Line spacing"><Choice label="Compact" value="compact" current={accessibility.readingSpacing} onChange={accessibility.setReadingSpacing}/><Choice label="Comfortable" value="default" current={accessibility.readingSpacing} onChange={accessibility.setReadingSpacing}/><Choice label="Open" value="extra" current={accessibility.readingSpacing} onChange={accessibility.setReadingSpacing}/></Setting>
+              <Setting label="Text spacing"><Choice label="Standard" value="default" current={accessibility.textSpacing} onChange={accessibility.setTextSpacing}/><Choice label="Wide" value="wide" current={accessibility.textSpacing} onChange={accessibility.setTextSpacing}/></Setting>
+            </>:null}
+            {sheet==="focus"?<>
+              <Setting label="Spoken-text highlight"><Choice label="Off" value="off" current={accessibility.highlightMode} onChange={accessibility.setHighlightMode}/><Choice label="Sentence" value="sentence" current={accessibility.highlightMode} onChange={accessibility.setHighlightMode}/><Choice label="Word" value="word" current={accessibility.highlightMode} onChange={accessibility.setHighlightMode}/><Choice label="Both" value="both" current={accessibility.highlightMode} onChange={accessibility.setHighlightMode}/></Setting>
+              <View style={[s.toggleRow,{borderColor:theme.border}]}><View style={s.toggleCopy}><Text style={[s.toggleTitle,{color:theme.text}]}>Emphasize current word</Text><Text style={[s.toggleDescription,{color:theme.mutedText}]}>Adds weight and size as Votic reads.</Text></View><Switch accessibilityLabel="Emphasize current word" value={accessibility.wordEmphasis} onValueChange={accessibility.setWordEmphasis} trackColor={{true:theme.accent}}/></View>
+            </>:null}
+            {sheet==="listen"?<>
+              <PlaybackSpeedControl rate={rate} onChange={changeRate}/>
+              <Setting label="Voice">{voices.length?voices.map(voice=><Choice key={voice.identifier} label={voice.name} value={voice.identifier} current={accessibility.voiceIdentifier||""} onChange={value=>{void stop();accessibility.setVoiceIdentifier(value);}}/>):<Text style={[s.emptyVoices,{color:theme.mutedText}]}>Your device voice will be used.</Text>}</Setting>
+            </>:null}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
-  </SafeAreaView>
+
+    <Modal visible={completionOpen} transparent animationType={accessibility.reduceMotion?"none":"fade"} onRequestClose={()=>setCompletionOpen(false)}>
+      <View style={s.completionBackdrop}>
+        <View accessibilityViewIsModal style={[s.completionCard,{backgroundColor:theme.surface,borderColor:theme.border}]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close completion experience" onPress={()=>setCompletionOpen(false)} style={s.completionClose}><Ionicons name="close" size={23} color={theme.mutedText}/></Pressable>
+          <View style={[s.completionIcon,{backgroundColor:theme.sentenceHighlight}]}><Ionicons name="checkmark" size={34} color={theme.accent}/></View>
+          <Text accessibilityRole="header" style={[s.completionTitle,{color:theme.text}]}>Nicely done.</Text>
+          <Text numberOfLines={2} style={[s.completionDocument,{color:theme.mutedText}]}>{activeDocument?.title}</Text>
+          <Text style={[s.completionMessage,{color:theme.mutedText}]}>You made it through the whole document. Choose what would be useful next.</Text>
+          <View style={s.completionStats}><View style={s.completionStat}><Text style={[s.completionValue,{color:theme.text}]}>{timeSpentLabel(documentTimeSpent(activeDocument))}</Text><Text style={[s.completionLabel,{color:theme.mutedText}]}>Time spent</Text></View><View style={[s.completionDivider,{backgroundColor:theme.border}]}/><View style={s.completionStat}><Text style={[s.completionValue,{color:theme.text}]}>{passages.length}</Text><Text style={[s.completionLabel,{color:theme.mutedText}]}>Passages</Text></View></View>
+          <View style={s.completionGrid}><CompletionAction icon="chatbubble-ellipses-outline" label="Ask Votic" onPress={()=>{setCompletionOpen(false);router.push("/assistant");}}/><CompletionAction icon="bookmarks-outline" label="Notes" onPress={()=>{setCompletionOpen(false);router.push("/notes");}}/><CompletionAction icon="refresh-outline" label="Review" onPress={()=>{setCompletionOpen(false);router.push("/review");}}/><CompletionAction icon="add-circle-outline" label="Start another" onPress={()=>{setCompletionOpen(false);router.replace("/documents");}}/></View>
+        </View>
+      </View>
+    </Modal>
+
+    <Modal visible={saveOpen} transparent animationType={accessibility.reduceMotion?"none":"slide"} onRequestClose={()=>setSaveOpen(false)}>
+      <KeyboardAvoidingView style={s.modalBackdrop} behavior={Platform.OS==="ios"?"padding":undefined}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close saved passage editor" onPress={()=>setSaveOpen(false)} style={StyleSheet.absoluteFill}/>
+        <View accessibilityViewIsModal style={[s.sheet,{backgroundColor:theme.surface}]}>
+          <View style={[s.handle,{backgroundColor:theme.border}]}/>
+          <View style={s.sheetHeader}><View><Text accessibilityRole="header" style={[s.sheetTitle,{color:theme.text}]}>{savedPassage?"Saved passage":"Save passage"}</Text><Text style={[s.sheetSubtitle,{color:theme.mutedText}]}>Return to this moment from your document library.</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close saved passage editor" onPress={()=>setSaveOpen(false)} style={s.iconButton}><Ionicons name="close" size={24} color={theme.text}/></Pressable></View>
+          <Text numberOfLines={4} style={[s.savedExcerpt,{color:theme.text,backgroundColor:theme.surfaceMuted}]}>{passages[index]}</Text>
+          <Text style={[s.settingLabel,{color:theme.mutedText}]}>NOTE — OPTIONAL</Text>
+          <TextInput accessibilityLabel="Note about saved passage" value={noteDraft} onChangeText={setNoteDraft} placeholder="Why do you want to remember this?" placeholderTextColor={theme.mutedText} multiline maxLength={500} style={[s.noteInput,{color:theme.text,borderColor:theme.border,backgroundColor:theme.background}]}/>
+          <View style={s.savedActions}>{savedPassage?<Pressable accessibilityRole="button" accessibilityLabel="Remove saved passage" onPress={confirmRemovePassage} style={({pressed})=>[s.removeButton,{borderColor:theme.border,opacity:pressed?.65:1}]}><Text style={[s.removeText,{color:theme.text}]}>Remove</Text></Pressable>:null}<Pressable accessibilityRole="button" accessibilityLabel={savedPassage?"Update saved passage":"Save passage"} onPress={confirmSavePassage} style={({pressed})=>[s.saveButton,{backgroundColor:theme.accent,opacity:pressed?.78:1}]}><Text style={s.saveText}>{savedPassage?"Update":"Save"}</Text></Pressable></View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  </SafeAreaView>;
 }
 
+function ToolButton({icon,label,active,onPress}:{icon:React.ComponentProps<typeof Ionicons>["name"];label:string;active:boolean;onPress:()=>void}){const {theme}=useVoticTheme();return <Pressable accessibilityRole="button" accessibilityState={{expanded:active}} onPress={onPress} style={({pressed})=>[s.tool,{backgroundColor:active?theme.sentenceHighlight:"transparent",opacity:pressed?.65:1}]}><Ionicons name={icon} size={20} color={active?theme.accent:theme.text}/><Text style={[s.toolLabel,{color:active?theme.accent:theme.text}]}>{label}</Text></Pressable>;}
+function CompletionAction({icon,label,onPress}:{icon:React.ComponentProps<typeof Ionicons>["name"];label:string;onPress:()=>void}){const {theme}=useVoticTheme();return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({pressed})=>[s.completionAction,{borderColor:theme.border,backgroundColor:pressed?theme.surfaceMuted:theme.surface}]}><Ionicons name={icon} size={22} color={theme.accent}/><Text style={[s.completionActionText,{color:theme.text}]}>{label}</Text></Pressable>;}
+
 const s=StyleSheet.create({
-  safe:{flex:1},content:{flex:1,paddingHorizontal:spacing.xl},topBar:{minHeight:56,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},close:{width:controlSizes.minimumTouch,height:controlSizes.minimumTouch,justifyContent:"center",alignItems:"center"},topSpacer:{width:controlSizes.minimumTouch},documentHeader:{gap:spacing.md,paddingTop:spacing.md,paddingBottom:spacing.lg},title:{...typography.screenTitle,fontSize:26},track:{height:4,borderRadius:2,overflow:"hidden"},fill:{height:"100%"},textArea:{flex:1},readingContent:{paddingTop:spacing.sm,paddingBottom:spacing.xxl},sentence:{marginBottom:spacing.sm},player:{paddingTop:spacing.md,paddingBottom:spacing.sm,alignItems:"center",gap:spacing.sm},readerTools:{flexDirection:"row",gap:spacing.sm},ask:{minHeight:44,borderWidth:1,borderRadius:radii.pill,paddingHorizontal:spacing.lg,flexDirection:"row",alignItems:"center",gap:spacing.sm},askText:{...typography.control},controls:{flexDirection:"row",justifyContent:"center",alignItems:"center",gap:spacing.xxl},control:{width:controlSizes.icon,height:controlSizes.icon,justifyContent:"center",alignItems:"center"},play:{width:controlSizes.play,height:controlSizes.play,borderRadius:radii.pill,justifyContent:"center",alignItems:"center"},speedButton:{minHeight:40,minWidth:72,borderRadius:radii.pill,paddingHorizontal:spacing.md,justifyContent:"center",alignItems:"center"},speed:{...typography.control,fontVariant:["tabular-nums"]},modalBackdrop:{flex:1,backgroundColor:"rgba(0,0,0,.28)",justifyContent:"flex-end"},sheet:{borderTopLeftRadius:radii.sheet,borderTopRightRadius:radii.sheet,paddingHorizontal:spacing.xl,paddingTop:spacing.sm,paddingBottom:spacing.xxl},handle:{width:36,height:4,borderRadius:2,alignSelf:"center",marginBottom:spacing.md},sheetHeader:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},sheetTitle:{...typography.sheetTitle},sheetClose:{width:controlSizes.minimumTouch,height:controlSizes.minimumTouch,alignItems:"center",justifyContent:"center"}
+  safe:{flex:1},content:{flex:1,paddingHorizontal:spacing.lg},topBar:{minHeight:54,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},headerActions:{flexDirection:"row"},iconButton:{width:controlSizes.minimumTouch,height:controlSizes.minimumTouch,justifyContent:"center",alignItems:"center"},documentHeader:{gap:spacing.sm,paddingTop:spacing.sm,paddingBottom:spacing.md},title:{...typography.screenTitle,fontSize:25},progressCopy:{flexDirection:"row",justifyContent:"space-between"},progressText:{fontSize:12,fontWeight:"600"},track:{height:4,borderRadius:2,overflow:"hidden"},fill:{height:"100%"},textArea:{flex:1},readingContent:{paddingTop:spacing.sm,paddingBottom:150},sentence:{marginBottom:spacing.sm,paddingHorizontal:2,borderRadius:4},ask:{position:"absolute",right:spacing.xl,bottom:142,minHeight:46,borderRadius:radii.pill,paddingHorizontal:spacing.lg,flexDirection:"row",alignItems:"center",gap:spacing.sm,elevation:5,shadowColor:"#000",shadowOpacity:.16,shadowRadius:8,shadowOffset:{width:0,height:3}},askText:{...typography.control,color:"#FFF"},dock:{borderWidth:1,borderRadius:radii.sheet,overflow:"hidden",marginBottom:spacing.sm},controls:{height:68,flexDirection:"row",alignItems:"center",paddingHorizontal:spacing.md,gap:spacing.md},control:{width:controlSizes.minimumTouch,height:controlSizes.minimumTouch,justifyContent:"center",alignItems:"center"},play:{width:52,height:52,borderRadius:26,justifyContent:"center",alignItems:"center"},nowPlaying:{flex:1,fontSize:13,fontWeight:"600",marginLeft:spacing.sm},toolRow:{borderTopWidth:1,flexDirection:"row",padding:spacing.xs},tool:{flex:1,minHeight:50,borderRadius:radii.md,alignItems:"center",justifyContent:"center",gap:2},toolLabel:{fontSize:12,fontWeight:"700"},modalBackdrop:{flex:1,backgroundColor:"rgba(0,0,0,.24)",justifyContent:"flex-end"},sheet:{maxHeight:"66%",borderTopLeftRadius:radii.sheet,borderTopRightRadius:radii.sheet,paddingHorizontal:spacing.xl,paddingTop:spacing.sm,paddingBottom:spacing.xl},handle:{width:38,height:4,borderRadius:2,alignSelf:"center",marginBottom:spacing.md},sheetHeader:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between",gap:spacing.md},sheetTitle:{...typography.sheetTitle},sheetSubtitle:{fontSize:13,marginTop:3,maxWidth:300},sheetContent:{paddingTop:spacing.lg,paddingBottom:spacing.xl,gap:spacing.lg},setting:{gap:spacing.sm},settingLabel:{fontSize:13,fontWeight:"700",textTransform:"uppercase",letterSpacing:.5},choiceRow:{flexDirection:"row",flexWrap:"wrap",gap:spacing.sm},choice:{minHeight:44,borderWidth:1,borderRadius:radii.md,paddingHorizontal:spacing.md,alignItems:"center",justifyContent:"center",flexGrow:1},choiceText:{...typography.control},toggleRow:{minHeight:72,borderWidth:1,borderRadius:radii.md,padding:spacing.md,flexDirection:"row",alignItems:"center",gap:spacing.md},toggleCopy:{flex:1},toggleTitle:{...typography.control},toggleDescription:{fontSize:13,marginTop:2},emptyVoices:{fontSize:14,paddingVertical:spacing.sm},completionBackdrop:{flex:1,backgroundColor:"rgba(0,0,0,.45)",alignItems:"center",justifyContent:"center",padding:spacing.xl},completionCard:{width:"100%",maxWidth:420,borderWidth:1,borderRadius:radii.sheet,padding:spacing.xl,alignItems:"center",gap:spacing.md},completionClose:{position:"absolute",right:spacing.sm,top:spacing.sm,width:controlSizes.minimumTouch,height:controlSizes.minimumTouch,alignItems:"center",justifyContent:"center",zIndex:1},completionIcon:{width:68,height:68,borderRadius:34,alignItems:"center",justifyContent:"center"},completionTitle:{...typography.screenTitle,fontSize:26,textAlign:"center"},completionDocument:{fontSize:15,textAlign:"center"},completionMessage:{fontSize:14,lineHeight:20,textAlign:"center"},completionStats:{width:"100%",flexDirection:"row",alignItems:"center",marginVertical:spacing.sm},completionStat:{flex:1,alignItems:"center",gap:spacing.xs},completionValue:{fontSize:21,fontWeight:"800"},completionLabel:{fontSize:13},completionDivider:{width:1,height:44},completionGrid:{width:"100%",flexDirection:"row",flexWrap:"wrap",gap:spacing.sm},completionAction:{width:"48%",flexGrow:1,minHeight:64,borderWidth:1,borderRadius:radii.md,paddingHorizontal:spacing.sm,alignItems:"center",justifyContent:"center",gap:spacing.xs},completionActionText:{fontSize:14,fontWeight:"700"},savedExcerpt:{fontSize:16,lineHeight:24,borderRadius:radii.md,padding:spacing.md,marginTop:spacing.lg},noteInput:{minHeight:104,maxHeight:180,borderWidth:1,borderRadius:radii.md,padding:spacing.md,fontSize:16,lineHeight:23,textAlignVertical:"top",marginTop:spacing.sm},savedActions:{flexDirection:"row",justifyContent:"flex-end",gap:spacing.sm,marginTop:spacing.lg},removeButton:{minHeight:48,borderWidth:1,borderRadius:radii.md,paddingHorizontal:spacing.xl,alignItems:"center",justifyContent:"center"},removeText:{...typography.control},saveButton:{minHeight:48,borderRadius:radii.md,paddingHorizontal:spacing.xxl,alignItems:"center",justifyContent:"center",flex:1},saveText:{...typography.control,color:"#FFF"}
 });
