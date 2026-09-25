@@ -109,6 +109,7 @@ export default function Reader(){
           <Text style={[s.nowPlaying,{color:theme.mutedText}]} numberOfLines={1}>{playing?"Listening":"Ready"} · {formatPlaybackRate(rate)}</Text>
         </View>
         <View style={[s.toolRow,{borderTopColor:theme.border}]}>
+          <ToolButton icon={savedPassage?"bookmark":"bookmark-outline"} label={savedPassage?"Saved":"Bookmark"} active={saveOpen} onPress={openSavePassage}/>
           <ToolButton icon="text-outline" label="Appearance" active={sheet==="appearance"} onPress={()=>openSheet("appearance")}/>
           <ToolButton icon="eye-outline" label="Focus" active={sheet==="focus"} onPress={()=>openSheet("focus")}/>
           <ToolButton icon="volume-high-outline" label="Listen" active={sheet==="listen"} onPress={()=>openSheet("listen")}/>

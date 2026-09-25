@@ -10,6 +10,7 @@ type Library={
   openDocument:(id:string,sentenceIndex?:number)=>void;
   addCollection:(name:string)=>void;
   setDocumentCollection:(id:string,collection?:string)=>void;
+  removeDocument:(id:string)=>void;
   savePassage:(documentId:string,passage:SavedPassage)=>void;
   removePassage:(documentId:string,passageId:string)=>void;
   updateProgress:(id:string,progress:number,sentenceIndex?:number,wordIndex?:number)=>void;
@@ -92,6 +93,11 @@ export function DocumentLibraryProvider({children}:PropsWithChildren){
     setDocuments(current=>current.map(document=>document.id===id?{...document,collection:collection||undefined,updatedAt:Date.now()}:document));
   }
 
+  function removeDocument(id:string){
+    setDocuments(current=>current.filter(document=>document.id!==id));
+    setActiveId(current=>current===id?null:current);
+  }
+
   function savePassage(documentId:string,passage:SavedPassage){
     setDocuments(current=>current.map(document=>document.id===documentId?{
       ...document,
@@ -153,7 +159,7 @@ export function DocumentLibraryProvider({children}:PropsWithChildren){
 
   return <C.Provider value={{
     documents,collections,activeDocument,addTextDocument,openDocument,addCollection,
-    setDocumentCollection,savePassage,removePassage,updateProgress,recordActivity,
+    setDocumentCollection,removeDocument,savePassage,removePassage,updateProgress,recordActivity,
     completeDocument,updatePlaybackRate,updateReviewResponses
   }}>{children}</C.Provider>;
 }
