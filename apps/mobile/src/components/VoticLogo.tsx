@@ -5,7 +5,7 @@ export function VoticLogo({compact=false,markOnly=false}:{compact?:boolean;markO
   const {theme}=useVoticTheme();
   const size=compact?28:36;
   return <View accessible accessibilityRole="image" accessibilityLabel="Votic logo" style={s.row}>
-    <Image source={require("../../assets/votic-mark.png")} resizeMode="contain" style={{width:size,height:size,marginTop:1}}/>
+    <View style={{width:size,height:size,marginTop:1}}><Image source={require("../../assets/votic-mark.png")} resizeMode="contain" style={StyleSheet.absoluteFill}/><Image source={require("../../assets/votic-wings-mask.png")} resizeMode="contain" tintColor={theme.logoWing} style={StyleSheet.absoluteFill}/></View>
     {markOnly?null:<Text style={[compact?s.compact:s.logo,{color:theme.text}]}>otic</Text>}
   </View>;
 }
