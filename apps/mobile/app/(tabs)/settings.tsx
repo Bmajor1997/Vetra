@@ -3,7 +3,7 @@ import { Screen } from "../../src/components/Screen";
 import { spacing,typography } from "../../src/design/tokens";
 import { TextSize,ReadingSpacing,useAccessibilityPreferences } from "../../src/accessibility/AccessibilityProvider";
 import { accentColors,AccentName,AppearanceMode,useVoticTheme } from "../../src/theme/ThemeProvider";
-const colors:AccentName[]=["orange","blue","purple","red","teal","emerald","indigo","rose","amber"];const appearances:AppearanceMode[]=["light","dark","system"];const textSizes:TextSize[]=["default","large","extra-large"];const spacings:ReadingSpacing[]=["default","extra"];
+const colors:AccentName[]=["orange","blue","purple","red","teal","emerald","indigo","rose","amber"];const appearances:AppearanceMode[]=["light","dark","system"];const textSizes:TextSize[]=["default","large","extra-large"];const spacings:ReadingSpacing[]=["compact","default","extra"];
 export default function Settings(){
  const {accentName,setAccentName,appearanceMode,setAppearanceMode,theme}=useVoticTheme();const a=useAccessibilityPreferences();
  const segmented=(values:string[],selected:string,onSelect:(v:any)=>void,label:(v:string)=>string=v=>v)=><View style={[s.segmented,{backgroundColor:theme.surfaceMuted}]}>{values.map(v=><Pressable key={v} accessibilityRole="radio" accessibilityState={{checked:selected===v}} onPress={()=>onSelect(v)} style={[s.segment,selected===v&&{backgroundColor:theme.surface,borderColor:theme.border}]}><Text style={[s.segmentText,{color:selected===v?theme.text:theme.mutedText}]}>{label(v)}</Text></Pressable>)}</View>;
