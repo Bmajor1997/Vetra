@@ -5,12 +5,12 @@ import { Animated,Easing,KeyboardAvoidingView,Platform,Pressable,SafeAreaView,Sc
 import { askVotic } from "../src/api/voticApi";
 import { spacing,typography } from "../src/design/tokens";
 import { useDocumentLibrary } from "../src/documents/DocumentLibraryProvider";
-import { useAccessibility } from "../src/accessibility/AccessibilityProvider";
+import { useAccessibilityPreferences } from "../src/accessibility/AccessibilityProvider";
 import { useVoticTheme } from "../src/theme/ThemeProvider";
 
 type Message={role:"user"|"votic";text:string};
 export default function Assistant(){
- const {theme}=useVoticTheme();const accessibility=useAccessibility();const {activeDocument}=useDocumentLibrary();
+ const {theme}=useVoticTheme();const accessibility=useAccessibilityPreferences();const {activeDocument}=useDocumentLibrary();
  const [question,setQuestion]=useState("");const [messages,setMessages]=useState<Message[]>([]);const [sending,setSending]=useState(false);const [error,setError]=useState("");const scrollRef=useRef<ScrollView>(null);
  async function send(){
   const clean=question.trim();if(!clean||sending)return;setQuestion("");setError("");setMessages(v=>[...v,{role:"user",text:clean}]);setSending(true);
