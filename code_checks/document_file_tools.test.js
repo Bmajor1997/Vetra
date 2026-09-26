@@ -61,3 +61,34 @@ test("extracts headings, symbols, and table content from a Word document", async
   assert.match(text, /__________/);
 });
 
+
+test("skips raw extraction syntax before readable document content", () => {
+  const extracted = [
+    "%PDF-1.7",
+    "1 0 obj",
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "endobj",
+    "xref",
+    "trailer",
+    "Quarterly Report",
+    "This is the first sentence a reader should hear.",
+  ].join("\n");
+  const cleaned = clean_extracted_text(extracted);
+  assert.equal(cleaned, "Quarterly Report\nThis is the first sentence a reader should hear.");
+});
+
+test("removes non-readable control characters without damaging prose", () => {
+  assert.equal(clean_extracted_text("Hello\u0000 world.\u0007\nNext line."), "Hello world.\nNext line.");
+});
+
+test("preserves intentional programming code in document content", () => {
+  const source = [
+    "Python Basics",
+    "Use a loop to process each item:",
+    "for item in items:",
+    "    print(item)",
+  ].join("\n");
+  const cleaned = clean_extracted_text(source);
+  assert.match(cleaned, /for item in items:/);
+  assert.match(cleaned, /print\(item\)/);
+});
