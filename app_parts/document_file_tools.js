@@ -113,7 +113,12 @@ export function clean_extracted_text(source, { removeRepeatedPageArtifacts = fal
     const repeated = new Set([...candidates].filter(([, count]) => count >= Math.ceil(pages.length * .6)).map(([line]) => line));
     pages = pages.map((page) => page.split("\n").filter((line) => !repeated.has(normalize_artifact(line))).join("\n"));
   }
-  text = pages.join("\n\n")
+  text = pages.join("\n\n");
+  const lines = text.split("\n");
+  const firstReadable = lines.findIndex((line, index) => index >= 80 || !is_extraction_artifact(line));
+  if (firstReadable > 0) text = lines.slice(firstReadable).join("\n");
+  text = text
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .replace(/^\s*(?:page\s+)?\d+(?:\s+of\s+\d+)?\s*$/gim, "")
     .replace(/([A-Za-z])-[ \t]*\n[ \t]*([a-z])/g, "$1$2")
     .replace(/^\s*[•◦▪●]\s*/gm, "• ")
@@ -124,6 +129,17 @@ export function clean_extracted_text(source, { removeRepeatedPageArtifacts = fal
   return text;
 }
 
+function is_extraction_artifact(line) {
+  const value = line.trim();
+  if (!value) return true;
+  return /^%PDF-\d(?:\.\d+)?/i.test(value)
+    || /^\d+\s+\d+\s+obj\b/i.test(value)
+    || /^(?:endobj|xref|trailer|startxref|%%EOF)\b/i.test(value)
+    || /^<<\s*\/?(?:Type|Catalog|Pages|Page|Length|Filter|Root|Info|Size)\b/i.test(value)
+    || /^\/?(?:Type|Catalog|Pages|Page|Length|Filter|Root|Info|Size)\s*\//i.test(value)
+    || /^<\?xml\b[^>]*\?>$/i.test(value)
+    || /^<!DOCTYPE\b[^>]*>$/i.test(value);
+}
 function normalize_artifact(line) { return line.toLowerCase().replace(/\d+/g, "#").replace(/\s+/g, " ").trim(); }
 function is_page_number(line) { return /^(?:page\s+)?\d+(?:\s+of\s+\d+)?$/i.test(line.trim()); }
 
