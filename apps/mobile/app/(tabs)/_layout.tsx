@@ -42,8 +42,8 @@ export default function TabLayout(){
   }}>
     <Tabs.Screen name="index" options={{title:"Home",tabBarAccessibilityLabel:"Home",tabBarIcon:({color,size,focused})=><AnimatedTabIcon focused={focused} color={color} size={size} active="home" inactive="home-outline"/>}}/>
     <Tabs.Screen name="documents" options={{title:"Documents",tabBarAccessibilityLabel:"Documents",tabBarIcon:({color,size,focused})=><AnimatedTabIcon focused={focused} color={color} size={size} active="documents" inactive="documents-outline"/>}}/>
-    <Tabs.Screen name="ask" options={{title:"Ask Votic",tabBarAccessibilityLabel:"Ask Votic",tabBarIcon:({color,size,focused})=><AnimatedTabIcon focused={focused} color={color} size={size} active="chatbubble-ellipses" inactive="chatbubble-ellipses-outline"/>}}/>
-    <Tabs.Screen name="notes" options={{href:null}}/>
+    <Tabs.Screen name="ask" options={{href:null}}/>
+    <Tabs.Screen name="notes" options={{title:"Notes",tabBarAccessibilityLabel:"Notes",tabBarIcon:({color,size,focused})=><AnimatedTabIcon focused={focused} color={color} size={size} active="create" inactive="create-outline"/>}}/>
     <Tabs.Screen name="settings" options={{title:"Settings",tabBarAccessibilityLabel:"Settings",tabBarIcon:({color,size,focused})=><AnimatedTabIcon focused={focused} color={color} size={size} active="settings" inactive="settings-outline"/>}}/>
   </Tabs>;
 }
