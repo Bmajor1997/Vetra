@@ -17,6 +17,23 @@ jobs:
       - name: Review dependency changes for vulnerabilities
         uses: actions/dependency-review-action@v5
 
+
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Get Votic's code
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - name: Analyze JavaScript and TypeScript with CodeQL
+        uses: github/codeql-action/analyze@v3
+
   security:
     name: Web Quality, Security, and Tests
     runs-on: ubuntu-latest
