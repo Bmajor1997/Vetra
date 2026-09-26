@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { useEffect,useRef } from "react";
-import { Animated,StyleSheet,View } from "react-native";
+import { Animated,ColorValue,StyleSheet,View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAccessibilityPreferences } from "../../src/accessibility/AccessibilityProvider";
 import { useVoticTheme } from "../../src/theme/ThemeProvider";
 
-function AnimatedTabIcon({focused,color,size,active,inactive}:{focused:boolean;color:string;size:number;active:keyof typeof Ionicons.glyphMap;inactive:keyof typeof Ionicons.glyphMap}){
+function AnimatedTabIcon({focused,color,size,active,inactive}:{focused:boolean;color:ColorValue;size:number;active:keyof typeof Ionicons.glyphMap;inactive:keyof typeof Ionicons.glyphMap}){
   const progress=useRef(new Animated.Value(focused?1:0)).current;
   const {reduceMotion}=useAccessibilityPreferences();
   useEffect(()=>{
