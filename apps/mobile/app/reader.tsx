@@ -15,6 +15,9 @@ import { AppearanceMode,useVoticTheme } from "../src/theme/ThemeProvider";
 type ReaderSheet="appearance"|"focus"|"listen"|null;
 type Voice=Awaited<ReturnType<typeof Speech.getAvailableVoicesAsync>>[number];
 
+const VOTIC_VOICE_NAMES=["Arden","Kaia","Soren","Mira","Evren","Nyla","Kellan","Elara"] as const;
+function voticVoiceName(index:number){return VOTIC_VOICE_NAMES[index]??`Voice ${index+1}`;}
+
 function sentences(text:string){return text.match(/[^.!?]+[.!?]+[\]"')]*|[^.!?]+$/g)?.map(value=>value.trim()).filter(Boolean)||[];}
 function wordMatches(text:string){return [...text.matchAll(/\S+/g)];}
 function speechSegment(text:string,startWord:number){const words=wordMatches(text);const safe=Math.max(0,Math.min(startWord,Math.max(0,words.length-1)));const start=words[safe]?.index??0;return {text:text.slice(start),startChar:start,startWord:safe,words};}
@@ -134,7 +137,7 @@ export default function Reader(){
             </>:null}
             {sheet==="listen"?<>
               <PlaybackSpeedControl rate={rate} onChange={changeRate}/>
-              <Setting label="Voice">{voices.length?voices.map(voice=><Choice key={voice.identifier} label={voice.name} value={voice.identifier} current={accessibility.voiceIdentifier||""} onChange={value=>{void stop();accessibility.setVoiceIdentifier(value);}}/>):<Text style={[s.emptyVoices,{color:theme.mutedText}]}>Your device voice will be used.</Text>}</Setting>
+              <Setting label="Voice">{voices.length?voices.map((voice,voiceIndex)=><Choice key={voice.identifier} label={voticVoiceName(voiceIndex)} value={voice.identifier} current={accessibility.voiceIdentifier||""} onChange={value=>{void stop();accessibility.setVoiceIdentifier(value);}}/>):<Text style={[s.emptyVoices,{color:theme.mutedText}]}>Your device voice will be used.</Text>}</Setting>
             </>:null}
           </ScrollView>
         </Pressable>
